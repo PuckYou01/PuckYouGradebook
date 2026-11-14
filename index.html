@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>เช็คชื่อ & คะแนน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--hdr:#ffffff;--bg:#f4f6f8;--card:#fff;--ink:#1c2733;--mut:#6b7785;--line:#dde3ea;--head:#eef2f6;--soft:#f7f9fb;--pri:#1f6feb;--ok:#1a8f4c;--late:#c77700;--leave:#2b7bbb;--abs:#d0342c;--act:#7a4cc2;--cpre:#e8f1ff;--cmid:#fff3d6;--cpost:#e6f6ec;--cfin:#fde8e6;--dan:#f0c2bf}
+[data-theme=dark]{color-scheme:dark;--hdr:#222b36;--bg:#12171d;--card:#1b222b;--ink:#e6ebf1;--mut:#97a3b1;--line:#2f3a47;--head:#232c37;--soft:#202833;--pri:#4d8ff5;--ok:#2aa862;--late:#d68a1a;--leave:#3f93d6;--abs:#e3554d;--act:#9a72dd;--cpre:#1d2c45;--cmid:#3d3214;--cpost:#17362a;--cfin:#412321;--dan:#6b2f2b}
+*{box-sizing:border-box}
+body{margin:0;font-family:Sarabun,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45}
+#app{max-width:980px;margin:0 auto;padding:12px 12px 84px}
+h1{font-size:1.3rem;margin:.2em 0 .6em}h2{font-size:1.15rem;margin:.4em 0 .6em}h3{font-size:1rem;margin:.8em 0 .4em}
+small,.mut{color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin:0 0 10px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.wrap{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer;min-height:40px}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:600}
+.btn.dan{color:var(--abs);border-color:var(--dan)}
+.btn.sm{padding:4px 9px;min-height:32px;font-size:.9rem}
+.btn:disabled{opacity:.5}
+input,select,textarea{font:inherit;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--card);color:var(--ink);max-width:100%}
+input.full,select.full,textarea.full{width:100%}
+label{display:block;font-size:.9rem;color:var(--mut);margin:8px 0 3px}
+.big{font-size:1.5rem;font-weight:700}
+.center{text-align:center}
+.hero{padding:26px 12px;border-radius:16px;color:#fff;text-align:center;margin-bottom:10px}
+.hero .ic{font-size:3.2rem;line-height:1}
+.st-มา{background:var(--ok)}.st-สาย{background:var(--late)}.st-ลา{background:var(--leave)}.st-ขาด{background:var(--abs)}.st-กิจกรรม{background:var(--act)}
+.chip{font:inherit;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 0;width:44px;text-align:center;cursor:pointer;font-size:.85rem;color:var(--mut)}
+.chip.on{color:#fff;border-color:transparent;font-weight:700}
+.chip.st-มา{background:var(--ok)}.chip.st-สาย{background:var(--late)}.chip.st-ลา{background:var(--leave)}.chip.st-ขาด{background:var(--abs)}.chip.st-กิจกรรม{background:var(--act)}
+.chip.pend{background:var(--cmid);color:var(--ink);border-color:var(--late);font-weight:700}
+.pend{background:var(--cmid);border-radius:5px;padding:0 5px}
+.stu{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.stu:last-child{border-bottom:0}.stu .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stu .no{width:26px;color:var(--mut);text-align:right;font-size:.9rem}
+.tbl{overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--card);max-height:72vh}
+table{border-collapse:collapse;font-size:.88rem;width:max-content;min-width:100%}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:5px 7px;text-align:center;white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--head);z-index:2;font-weight:600}
+td.nm,th.nm{position:sticky;left:0;background:var(--card);text-align:left;z-index:1;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+thead th.nm{z-index:3;background:var(--head)}
+td.tap,th.tap{cursor:pointer}
+.c-pre{background:var(--cpre)}.c-mid{background:var(--cmid)}.c-post{background:var(--cpost)}.c-final{background:var(--cfin)}
+.a{display:inline-block;min-width:22px;border-radius:5px;color:#fff;font-weight:700;padding:0 4px}
+.warn{color:var(--abs);font-weight:700}
+nav.menu{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;z-index:20}
+nav.menu button{flex:1;font:inherit;font-size:.78rem;border:0;background:none;padding:7px 2px 10px;color:var(--mut);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:10px}
+nav.menu button.on{color:var(--pri);font-weight:700}
+#hdr{position:sticky;top:0;z-index:30;background:var(--hdr);border-bottom:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.07)}
+#hdr:empty{display:none}
+.hin{max-width:980px;margin:0 auto;padding:9px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.brand b{display:block;font-size:1.05rem;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.brand small{display:block;color:var(--mut);font-size:.8rem;line-height:1.3}
+.logo{width:40px;height:40px;border-radius:11px;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;flex:none;font-weight:700}
+.hbtn{width:44px;height:44px;border-radius:11px;border:1px solid var(--line);background:var(--card);color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
+.hlive{font:inherit;display:flex;align-items:center;gap:8px;border:1px solid var(--ok);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 14px;cursor:pointer;min-height:40px}
+.hlive i{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:none}
+.hlive span{color:var(--mut);font-size:.85rem}
+@media(max-width:599px){.hlive{order:3;flex:1 1 100%;justify-content:flex-start}.hlive span{margin-left:auto}}
+.shell{display:block}.main{min-width:0}
+body.mode-S #app,body.mode-S .hin{max-width:640px}
+@media(min-width:900px){
+  body.mode-T #app,body.mode-T .hin{max-width:1320px}
+  body.mode-T #app{padding:16px 20px 30px}
+  .shell{display:flex;gap:18px;align-items:flex-start}.main{flex:1}
+  nav.menu{position:sticky;top:80px;flex-direction:column;width:200px;flex:none;border:1px solid var(--line);border-radius:12px;padding:6px;gap:2px;z-index:5}
+  nav.menu button{flex-direction:row;justify-content:flex-start;gap:10px;font-size:.95rem;padding:10px 12px;color:var(--ink)}
+  nav.menu button.on{background:var(--soft);color:var(--pri)}
+  #toast{bottom:30px}
+}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 10px}
+@media(min-width:700px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-align:left;font:inherit;color:var(--ink);cursor:pointer;min-height:44px}
+.kpi small{display:block;color:var(--mut);font-size:.85rem}.kpi b{display:block;font-size:1.65rem;line-height:1.25}
+.cols{display:grid;grid-template-columns:minmax(0,1fr);gap:0 14px}.cols>div{min-width:0}
+@media(min-width:900px){.cols{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);align-items:start}}
+.sbar{display:flex;height:10px;border-radius:999px;overflow:hidden;background:var(--line);margin:6px 0 4px}.sbar i{display:block;height:100%}
+.k-s{background:var(--ok)}.k-l{background:var(--late)}.k-w{background:var(--act)}.k-m{background:var(--abs)}.k-z{background:var(--mut)}.k-o{background:var(--line)}
+.leg{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:.82rem;color:var(--mut)}.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none}.seg button{font:inherit;border:0;background:var(--card);color:var(--ink);padding:8px 14px;cursor:pointer;min-height:40px}.seg button.on{background:var(--pri);color:#fff;font-weight:700}
+.hm td{padding:2px;min-width:40px}.hm .c{display:block;border-radius:5px;height:26px;line-height:26px;font-size:.75rem;font-weight:700;color:#fff}.hm .c.k-o{background:var(--soft);color:var(--mut)}
+.ring{flex:none}
+.task{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0;background:var(--soft)}
+.tlink{font:inherit;font-size:1.05rem;font-weight:700;color:var(--ink);background:none;border:0;padding:0;text-align:left;cursor:pointer;min-height:32px;line-height:1.3}
+.tlink:hover{color:var(--pri)}
+.hm th.hmh{white-space:normal;min-width:70px;max-width:96px;font-size:.76rem;line-height:1.25;vertical-align:bottom}
+.tt th.brk,.tt td.brk{background:var(--soft);color:var(--mut);font-size:.8rem;min-width:64px;width:64px;white-space:normal;line-height:1.3}
+.ordr{display:flex;align-items:center;gap:8px;padding:4px 6px;border:1px solid var(--line);border-radius:10px;margin:6px 0;background:var(--card)}
+.ordr.drag{border-color:var(--pri);box-shadow:0 6px 16px rgba(0,0,0,.2);background:var(--soft)}
+.hdl{touch-action:none;cursor:grab;padding:10px;font-size:1.1rem;color:var(--mut);user-select:none;-webkit-user-select:none;line-height:1}
+.badge{display:inline-block;font-size:.72rem;padding:1px 7px;border-radius:999px;background:var(--soft);border:1px solid var(--line);color:var(--mut);vertical-align:1px}
+.nmlink{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}.nmlink:hover{color:var(--pri);text-decoration:underline}
+#saved{position:fixed;top:72px;right:14px;z-index:70;display:none;align-items:center;gap:6px;background:var(--ok);color:#fff;font-weight:700;padding:7px 14px;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+#saved.on{display:flex;animation:pop .25s ease-out}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.busy{opacity:.55;pointer-events:none;cursor:progress}
+.arr{width:44px;height:44px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:10px}
+.arr svg{width:24px;height:24px}
+.lvw{border:1px solid var(--abs);background:var(--cfin);border-radius:10px;padding:8px 10px;margin:8px 0}
+.chipl{display:inline-flex;align-items:center;gap:4px;font-size:.78rem;padding:2px 8px;border-radius:999px;color:#fff;font-weight:700}
+.duep{font-size:.82rem;color:var(--mut)}.duep.over{color:var(--abs);font-weight:700}.duep.soon{color:var(--late);font-weight:600}
+h2{margin:.1em 0 .5em}
+#bar{position:fixed;top:0;left:0;height:3px;width:100%;background:var(--pri);z-index:50;display:none;animation:ld 1s infinite alternate}
+@keyframes ld{from{opacity:.25}to{opacity:1}}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:40}
+#modal.on{display:flex}
+#modal .box{background:var(--card);border-radius:16px 16px 0 0;padding:16px;width:100%;max-width:520px;max-height:86vh;overflow:auto}
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:20px;display:none;z-index:60;max-width:90%;text-align:center}
+.tt td{height:52px;min-width:86px;white-space:normal}.tt td.has{background:var(--cpre);font-weight:600}
+.tt tbody th{position:sticky;left:0;background:var(--head);z-index:1}
+.rate{display:flex;gap:6px}.rate button{flex:1}
+.rate button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.bar2{height:8px;background:var(--line);border-radius:5px;overflow:hidden}.bar2 i{display:block;height:100%;background:var(--ok)}
+details summary{cursor:pointer;font-weight:600}
+.scin{width:74px;text-align:center}
+.th{width:58px;height:58px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer;background:var(--soft)}
+.ths{display:flex;gap:6px;flex-wrap:wrap;width:100%;margin-top:6px;align-items:center}
+.thw{position:relative}.thw .x{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:0;background:var(--abs);color:#fff;font-size:.75rem;cursor:pointer;padding:0}
+.qimg{max-width:100%;max-height:280px;border-radius:10px;display:block;margin:8px 0;background:#fff}
+.opt{display:flex;gap:8px;align-items:flex-start;padding:9px 10px;border:1px solid var(--line);border-radius:10px;margin:6px 0;cursor:pointer;color:var(--ink);font-size:1rem}
+.opt input{margin-top:4px}
+.qtime{position:sticky;top:0;z-index:15;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.ok{color:var(--ok);font-weight:700}.ng{color:var(--abs);font-weight:700}
+.qcard textarea{min-height:60px}
+pre.prompt{white-space:pre-wrap;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:.88rem;max-height:220px;overflow:auto}
+.stum{color:var(--ok);font-size:.75rem;margin-left:2px}.stum.dirty{color:var(--late)}.stum.err{color:var(--abs);font-weight:700}
+.trsel{min-width:52px;padding:4px}.trsel.chg{outline:2px solid var(--late);outline-offset:-1px}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<header id="hdr"></header>
+<div id="app"></div>
+<div id="modal"></div>
+<div id="toast"></div>
+<div id="saved" role="status" aria-live="polite"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>บันทึกแล้ว</div>
+<script>
+/* ====== ตั้งค่า: วาง URL ของ Apps Script Web app (ลงท้าย /exec) ตรงนี้ ====== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbyJWscvDfAl1IUnkgrwo225EqopTIXb0z7K3SHP2_AO06rUlwnc6LMDkF92a0nYVTvi/exec';
+
+const ST = ['มา','สาย','ลา','ขาด','กิจกรรม'];
+const STL = {'มา':'ม','สาย':'ส','ลา':'ล','ขาด':'ข','กิจกรรม':'ก'};
+const CATS = ['pre','mid','post','final'];
+const CATN = {pre:'ก่อนกลางภาค',mid:'กลางภาค',post:'หลังกลางภาค',final:'ปลายภาค'};
+const CATS_S = {pre:'ก่อน',mid:'กลาง',post:'หลัง',final:'ปลาย'};
+const DAYS = ['','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์','อาทิตย์'];
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mem = {};
+const LS = {
+  get(k){ try { const v = localStorage.getItem('gb_'+k); return v == null ? (mem[k] || null) : v; } catch(e){ return mem[k] || null; } },
+  set(k,v){ if (v == null) delete mem[k]; else mem[k] = v; try { v == null ? localStorage.removeItem('gb_'+k) : localStorage.setItem('gb_'+k, v); } catch(e){} }
+};
+const rnd = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+const fmtD = d => d ? d.slice(8,10) + '/' + d.slice(5,7) : '';
+const perTxt = x => +x.span === 2 ? (+x.period) + '–' + (+x.period + 1) : String(x.period || '-');
+const MODE = /teacher/.test(location.hash + location.search) ? 'T' : 'S';
+
+let busyN = 0;
+function busy(d){ busyN = Math.max(0, busyN + d); $('#bar').style.display = busyN ? 'block' : 'none'; }
+const READS = new Set(['tStumisInfo', 'tStumisTest', 'tTraitGrid', 'sLookup', 'sInit', 'sScores', 'sImg', 'tImg', 'tLogin', 'tBoot', 'tDash', 'tLive', 'tAttGrid', 'tScoreGrid', 'tLog', 'tQuizList', 'tQuizResults', 'tStudent', 'sQuizStart', 'sQuizLeave']);
+let savedT;
+function savedFlash(){ const el = document.getElementById('saved'); if (!el) return; const hb = document.getElementById('hdr'); el.style.top = Math.max(8, (hb ? hb.getBoundingClientRect().bottom : 60) + 8) + 'px'; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); clearTimeout(savedT); savedT = setTimeout(() => el.classList.remove('on'), 1600); }
+const MS = () => +((T.boot && T.boot.cfg.msPct) || 80), RP = () => +((T.boot && T.boot.cfg.rPct) || 80);
+async function api(a, p, quiet){
+  if (!quiet) busy(1);
+  try {
+    const r = await fetch(API_URL, { method:'POST', body: JSON.stringify({ a:a, p:p || {} }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'เกิดข้อผิดพลาด');
+    if (!quiet && !READS.has(a) && !(p && p.dry)) savedFlash();
+    return j.data;
+  } finally { if (!quiet) busy(-1); }
+}
+const tapi = (a, p, quiet) => api(a, Object.assign({ t: LS.get('tt') }, p || {}), quiet);
+let toastT;
+function toast(m){ const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', 2600); }
+function modal(html){ const m = $('#modal'); m.innerHTML = '<div class="box">' + html + '</div>'; m.classList.add('on'); setTimeout(loadImgs, 0); }
+let askRes = null, askOpt = {};
+function mclose(){ const m = $('#modal'); m.classList.remove('on'); m.innerHTML = ''; if (askRes) { const r = askRes; askRes = null; r(false); } }
+function ask(msg, opt){
+  mclose(); askOpt = opt || {};
+  return new Promise(res => { askRes = res;
+    modal(`<h3>${esc(askOpt.title || 'ยืนยัน')}</h3><p>${esc(msg)}</p>${askOpt.pass ? '<label>ใส่รหัสผ่านครูเพื่อยืนยันการลบ</label><input class="full" id="askP" type="password" autocomplete="off">' : ''}
+    <p class="wrap"><button class="btn ${askOpt.danger ? 'dan' : 'pri'}" data-act="askY">${esc(askOpt.yes || 'ยืนยัน')}</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`); });
+}
+const IMG = {}, IMGP = {}, BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+function loadImgs(){
+  document.querySelectorAll('img[data-fid]').forEach(el => {
+    const id = el.dataset.fid; if (el.dataset.ld) return; el.dataset.ld = '1';
+    if (IMG[id]) { el.src = IMG[id]; return; }
+    el.src = BLANK;
+    IMGP[id] = IMGP[id] || (MODE === 'T' ? tapi('tImg', { fileId: id }, true) : api('sImg', { token: LS.get('tok'), fileId: id }, true))
+      .then(u => { IMG[id] = u; document.querySelectorAll(`img[data-fid="${id}"]`).forEach(x => x.src = u); }).catch(() => { delete IMGP[id]; });
+  });
+}
+async function readImg(file){
+  if (!file) throw new Error('ยังไม่ได้เลือกรูป');
+  if (!/^image\//.test(file.type)) throw new Error('เลือกไฟล์รูปเท่านั้น');
+  let out = null;
+  if (window.createImageBitmap) { try {
+    const b = await createImageBitmap(file), k = Math.min(1, 1600 / Math.max(b.width, b.height)), c = document.createElement('canvas');
+    c.width = Math.round(b.width * k); c.height = Math.round(b.height * k); const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(b, 0, 0, c.width, c.height);
+    out = c.toDataURL('image/jpeg', 0.8); } catch(e){ out = null; } }
+  if (!out) out = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('อ่านไฟล์ไม่ได้')); r.readAsDataURL(file); });
+  if (out.length > 2800000) throw new Error('รูปใหญ่เกินไป ลองถ่ายใหม่หรือครอปให้เล็กลง');
+  return out;
+}
+const thumb = (fid, del) => `<span class="thw"><img class="th" data-fid="${esc(fid)}" data-act="imgView" data-id="${esc(fid)}" alt="รูปแนบ">${del ? `<button class="x" data-act="${del}" data-id="${esc(fid)}" aria-label="ลบรูป">✕</button>` : ''}</span>`;
+const imgView = id => modal(`<img class="qimg" style="max-height:70vh;margin:0 auto" data-fid="${esc(id)}" alt="รูปแนบ"><p><button class="btn" data-act="mclose">ปิด</button></p>`);
+const nl = t => esc(t).replace(/\n/g, '<br>');
+function parseNum(v){ const s = String(v == null ? '' : v).replace(/[,\s]/g, '').replace(/−/g, '-').replace(/(?:[×xX*·])10\^?/, 'e').replace(/\^/g, ''); return s === '' || isNaN(+s) ? NaN : +s; }
+const SVG = p => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const ICO = {
+  flask: SVG('<path d="M9 3h6"/><path d="M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/><path d="M7.5 15h9"/>'),
+  moon: SVG('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
+  sun: SVG('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
+  today: SVG('<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>'),
+  att: SVG('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 11l2 2 4-4"/>'),
+  score: SVG('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+  tt: SVG('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'),
+  more: SVG('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'),
+  copy: SVG('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>')
+};
+const TH_M = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const thShort = d => d ? (+d.slice(8, 10)) + ' ' + TH_M[+d.slice(5, 7) - 1] : '';
+const thDate = (d, dow) => d ? (DAYS[dow] ? DAYS[dow] + ' ' : '') + thShort(d) + ' ' + (+d.slice(0, 4) + 543) : '';
+const dayDiff = (a, b) => Math.round((Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10)) - Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10))) / 864e5);
+function dueTxt(due, today, done){
+  if (!due) return { t: 'ไม่มีกำหนดส่ง', c: '' };
+  if (done) return { t: 'ส่ง ' + thShort(due), c: '' };
+  const d = dayDiff(due, today);
+  if (d < 0) return { t: 'ส่ง ' + thShort(due) + ' · เลยกำหนด ' + (-d) + ' วัน', c: 'over' };
+  if (d === 0) return { t: 'ส่งวันนี้', c: 'soon' };
+  return { t: 'ส่ง ' + thShort(due) + ' · อีก ' + d + ' วัน', c: d <= 2 ? 'soon' : '' };
+}
+function vHeader(){
+  const dark = document.documentElement.dataset.theme === 'dark';
+  let brand = `<span class="logo">${ICO.flask}</span><div style="min-width:0"><b>เช็คชื่อ &amp; คะแนน</b>`, extra = '';
+  if (MODE === 'S' && S.me) brand = `<span class="logo">${esc(String(S.me.name).replace(/^(นาย|นางสาว|นาง|น\.ส\.|ด\.ช\.|ด\.ญ\.)\s*/, '').slice(0, 1))}</span><div style="min-width:0"><b>${esc(S.me.name)}</b><small>ม.${esc(S.me.room)} · เลขที่ ${esc(S.me.no)}</small>`;
+  else if (MODE === 'T' && T.boot) {
+    brand += `<small>${thDate(T.boot.today, T.boot.dow)}</small>`;
+    const op = T.boot.open;
+    if (op.length) extra = `<button class="hlive" data-act="hlive" data-id="${op[0].sessionId}"><i></i>กำลังเปิดคาบ <b>${esc((grp(op[0].groupId) || {}).label || '')}</b>${op.length > 1 ? ' +' + (op.length - 1) : ''}<span>ปิดเอง ${closeAt(op[0])} น.</span></button>`;
+  }
+  return `<div class="hin"><div class="brand">${brand}</div></div>${extra}<button id="theme" class="hbtn" aria-label="${dark ? 'สลับเป็นโหมดสว่าง' : 'สลับเป็นโหมดมืด'}">${dark ? ICO.sun : ICO.moon}</button></div>`;
+}
+function drawHeader(){ const h = $('#hdr'); if (h) h.innerHTML = vHeader(); }
+let DRG = null;
+function ordHtml(){
+  const cats = CATS.filter(c => (T.ord[c] || []).length > 1);
+  if (!cats.length) return '<p class="mut">ยังมีไม่ถึง 2 งานในหมวดเดียวกัน</p>';
+  return cats.map(c => `<h3 style="margin:10px 0 2px">${CATN[c]}</h3><div class="ordl" data-cat="${c}">${T.ord[c].map((id, i) => { const it = T.boot.items.find(x => x.itemId === id);
+    return `<div class="ordr ${DRG && DRG.c === c && DRG.i === i ? 'drag' : ''}"><span class="hdl" data-drag="${c}|${i}" title="กดแช่แล้วลาก">⋮⋮</span><span class="no">${i + 1}</span><span class="nm" style="flex:1;min-width:0">${esc(it ? it.label : id)}</span>
+      <button class="btn arr" data-act="ordMv" data-c="${c}" data-i="${i}" data-d="-1" aria-label="เลื่อนขึ้น" ${i === 0 ? 'disabled' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button><button class="btn arr" data-act="ordMv" data-c="${c}" data-i="${i}" data-d="1" aria-label="เลื่อนลง" ${i === T.ord[c].length - 1 ? 'disabled' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg></button></div>`; }).join('')}</div>`).join('');
+}
+function ordPos(c, i){
+  const a = T.ord[c], lab = id => { const it = T.boot.items.find(x => x.itemId === id); return it ? '«' + it.label + '»' : ''; };
+  return `${lab(a[i])} อยู่ลำดับที่ ${i + 1}${a[i - 1] ? ' · ต่อจาก ' + lab(a[i - 1]) : ' · แรกสุด'}${a[i + 1] ? ' · ก่อน ' + lab(a[i + 1]) : ' · ท้ายสุด'}`;
+}
+function ordDraw(c, i){ const b = $('#ordBox'), p = $('#ordPos'); if (b) b.innerHTML = ordHtml(); if (p && c) p.textContent = ordPos(c, i); }
+document.addEventListener('pointerdown', e => { const hd = e.target.closest && e.target.closest('[data-drag]'); if (!hd) return;
+  e.preventDefault(); const pr = hd.dataset.drag.split('|'); DRG = { c: pr[0], i: +pr[1] }; ordDraw(DRG.c, DRG.i); });
+document.addEventListener('pointermove', e => { if (!DRG) return; e.preventDefault();
+  const rows = [...document.querySelectorAll(`.ordl[data-cat="${DRG.c}"] .ordr`)]; if (!rows.length) return;
+  let to = rows.length - 1; for (let k = 0; k < rows.length; k++) { const r = rows[k].getBoundingClientRect(); if (e.clientY < r.top + r.height / 2) { to = k; break; } }
+  if (to !== DRG.i) { const a = T.ord[DRG.c], x = a.splice(DRG.i, 1)[0]; a.splice(to, 0, x); DRG.i = to; ordDraw(DRG.c, to); } }, { passive: false });
+const dragEnd = () => { if (DRG) { const d = DRG; DRG = null; ordDraw(d.c, d.i); } };
+document.addEventListener('pointerup', dragEnd); document.addEventListener('pointercancel', dragEnd);
+function copyText(txt, msg){
+  const fb = () => modal(`<h3>คัดลอกข้อความ</h3><textarea class="full" rows="8" id="cpT" readonly>${esc(txt)}</textarea><p class="wrap"><button class="btn" data-act="mclose">ปิด</button></p>`);
+  try { navigator.clipboard.writeText(txt).then(() => toast(msg || 'คัดลอกแล้ว วางในกลุ่ม LINE ได้เลย'), fb); } catch(e){ fb(); }
+}
+function setTheme(t){ document.documentElement.dataset.theme = t; LS.set('theme', t); drawHeader(); }
+const modalOpen = () => $('#modal').classList.contains('on');
+async function run(fn){ try { await fn(); } catch(e){ if (/AUTH/.test(e.message)) { LS.set('tt', null); T.boot = null; draw(); } toast(e.message.replace(/^AUTH: /, '')); } }
+function calcNet(sub, items, get){
+  const w = { pre:+sub.wPre||0, mid:+sub.wMid||0, post:+sub.wPost||0, final:+sub.wFinal||0 }, eq = sub.wMode === 'eq', out = { cats:{}, total:0, eq };
+  CATS.forEach(c => {
+    let got = 0, max = 0, frac = 0, n = 0;
+    items.forEach(i => { if (i.cat !== c) return; const m = +i.max || 0, sc = get(i.itemId), g = sc && sc.score !== '' && sc.score != null ? +sc.score || 0 : 0; max += m; got += g; if (m > 0) { frac += g / m; n++; } });
+    const net = eq ? (n ? frac / n * w[c] : 0) : (max > 0 ? got / max * w[c] : 0);
+    out.cats[c] = { got, max, w:w[c], net: Math.round(net*100)/100 }; out.total += net;
+  });
+  out.total = Math.round(out.total*100)/100; return out;
+}
+const WM = s => s && s.wMode === 'eq' ? 'ทุกงานน้ำหนักเท่ากัน' : 'ตามคะแนนเต็มของงาน';
+const TLV = ['ไม่ผ่าน', 'ผ่าน', 'ดี', 'ดีเยี่ยม'], TKN = { char:'คุณลักษณะอันพึงประสงค์', rtw:'การอ่าน คิดวิเคราะห์ และเขียน' }, TKS = { char:'คุณลักษณะฯ', rtw:'อ่าน คิด เขียน' };
+const TRDEF = { char: ['รักชาติ ศาสน์ กษัตริย์', 'ซื่อสัตย์สุจริต', 'มีวินัย', 'ใฝ่เรียนรู้', 'อยู่อย่างพอเพียง', 'มุ่งมั่นในการทำงาน', 'รักความเป็นไทย', 'มีจิตสาธารณะ'],
+  rtw: ['อ่านเพื่อหาข้อมูลสารสนเทศเสริมประสบการณ์จากสื่อประเภทต่าง ๆ', 'จับประเด็นสำคัญ เปรียบเทียบ เชื่อมโยงความเป็นเหตุเป็นผลจากเรื่องที่อ่าน', 'เชื่อมโยงความสัมพันธ์ของเรื่องราว เหตุการณ์ของเรื่องที่อ่าน', 'แสดงความคิดเห็นต่อเรื่องที่อ่านโดยมีเหตุผลสนับสนุน', 'เขียนถ่ายทอดความเข้าใจ ความคิดเห็น การวิเคราะห์ วิจารณ์ และสร้างสรรค์'] };
+function trLevel(vals){ const v = vals.filter(x => x !== '' && x != null).map(Number); if (!v.length) return null;
+  const avg = v.reduce((a, b) => a + b, 0) / v.length; return { avg: Math.round(avg * 100) / 100, level: avg >= 2.5 ? 3 : avg >= 1.5 ? 2 : avg >= 1 ? 1 : 0, n: v.length }; }
+function trVals(sid, k, saved){ const out = []; for (let i = 0; i < T.tg.lists[k].length; i++) { const key = k + '|' + sid + '|' + i; out.push(!saved && key in T.tdraft ? T.tdraft[key] : (T.tg.map[key] != null ? T.tg.map[key] : '')); } return out; }
+function trTxt(sum, n){ return sum ? `<b>${TLV[sum.level]} (${sum.level})</b> <small class="mut">เฉลี่ย ${sum.avg} · ประเมิน ${sum.n}${n ? '/' + n : ''} ข้อ</small>` : '<small class="mut">ยังไม่ประเมิน</small>'; }
+function grade(total, cfg){
+  const cuts = String(cfg.gradeCut || '80,75,70,65,60,55,50').split(',').map(Number), g = [4,3.5,3,2.5,2,1.5,1];
+  for (let i = 0; i < cuts.length; i++) if (total >= cuts[i]) return g[i];
+  return 0;
+}
+
+/* =================== นักเรียน =================== */
+const S = { step:'load', me:null, sessions:[], reg:{}, scores:null, rate:{}, err:'' };
+async function sBoot(){
+  if (!LS.get('dev')) LS.set('dev', rnd());
+  const tok = LS.get('tok');
+  if (!tok) { S.step = 'id'; return draw(); }
+  S.step = 'load'; draw();
+  try {
+    const d = await api('sInit', { token: tok, dev: LS.get('dev') });
+    if (!d.me) { LS.set('tok', null); S.me = null; S.step = 'id'; }
+    else { S.me = d.me; S.sessions = d.sessions; S.step = 'home'; }
+  } catch(e){ S.step = 'err'; S.err = e.message; }
+  draw();
+}
+function vStudent(){
+  if (S.step === 'load') return '<div class="card center"><p class="big">กำลังเช็คชื่อ…</p></div>';
+  if (S.step === 'err') return `<div class="card center"><p>เชื่อมต่อไม่ได้: ${esc(S.err)}</p><button class="btn pri" data-act="sRetry">ลองอีกครั้ง</button></div>`;
+  if (S.step === 'id') return `<h1>ลงทะเบียนเครื่อง</h1><div class="card"><p class="mut">ทำครั้งเดียว ครั้งต่อไปแตะแล้วเช็คชื่อได้เลย</p>
+    <label>เลขประจำตัวนักเรียน</label><input class="full" id="sid" inputmode="numeric" autocomplete="off">
+    <p><button class="btn pri" data-act="sLookup">ถัดไป</button></p></div>`;
+  if (S.step === 'new') return `<h1>ลงทะเบียนนักเรียนใหม่</h1><div class="card"><p class="mut" style="margin-top:0">ยังไม่มีเลขประจำตัว <b>${esc(S.reg.id)}</b> ในระบบ กรอกข้อมูลเพื่อลงทะเบียน (ครูตรวจและแก้ไขให้ภายหลังได้)</p>
+    <label for="nName">ชื่อ-นามสกุล</label><input class="full" id="nName" placeholder="เช่น นายกิตติ ใจดี" autocomplete="name">
+    <label for="nNick">ชื่อเล่น (ไม่บังคับ)</label><input class="full" id="nNick">
+    <div class="wrap"><div><label for="nRoom">ห้อง</label><select id="nRoom"><option value="">เลือกห้อง</option>${(S.reg.rooms || []).map(r => `<option value="${esc(r)}">ม.${esc(r)}</option>`).join('')}</select></div>
+    <div><label for="nNo">เลขที่</label><input id="nNo" type="number" inputmode="numeric" min="1" max="99" style="width:90px"></div></div>
+    <label for="nPin">ตั้งรหัส 4 หลัก (จำไว้ใช้เมื่อเปลี่ยนเครื่อง)</label><input class="full" id="nPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+    <p class="wrap"><button class="btn pri" data-act="sSelf">ลงทะเบียน</button><button class="btn" data-act="sBack">แก้เลขประจำตัว</button></p></div>`;
+  if (S.step === 'pin') return `<h1>ลงทะเบียนเครื่อง</h1><div class="card"><p>สวัสดี <b>${esc(S.reg.name)}</b> ห้อง ม.${esc(S.reg.room)}</p>
+    ${S.reg.locked || S.reg.hasPin ? '' : `<label for="snick">ชื่อเล่น (ไม่บังคับ)</label><input class="full" id="snick" value="${esc(S.reg.nick || '')}">`}
+    ${S.reg.locked ? '<p class="warn">รหัสถูกล็อก แจ้งครูให้รีเซ็ต</p>' : `<label>${S.reg.hasPin ? 'ใส่รหัส 4 หลักของตัวเอง' : 'ตั้งรหัส 4 หลัก (จำไว้ใช้เมื่อเปลี่ยนเครื่อง)'}</label>
+    <input class="full" id="spin" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+    <p class="wrap"><button class="btn pri" data-act="sRegister">ยืนยัน</button><button class="btn" data-act="sBack">ไม่ใช่ฉัน</button></p>`}
+    ${S.reg.hasPin ? `<p style="margin-bottom:0"><button class="btn sm" data-act="sForgot">ลืมรหัส 4 หลัก</button> <small class="mut">ส่งคำขอให้ครูกดรีเซ็ต ไม่ต้องไปหาครู</small></p>` : ''}</div>`;
+  if (S.step === 'forgot') return `<h1>ลืมรหัส</h1><div class="card"><p><b>ส่งคำขอรีเซ็ตรหัสแล้ว</b></p><p>รอครูกดอนุมัติในระบบ (ไม่ต้องไปหาครู) จากนั้นกลับมาแตะแท็กหรือเปิดหน้านี้ กรอกเลขประจำตัว แล้วตั้งรหัสใหม่</p><p class="mut">คะแนน งาน และเวลาเรียนเดิมไม่หาย</p><p><button class="btn" data-act="sBack">กลับ</button></p></div>`;
+  if (S.step === 'scores') return vMyScores();
+  if (S.step === 'quiz') return vQuiz();
+  let h = '';
+  if (!S.sessions.length) h += '<div class="card center"><p>ตอนนี้ไม่มีคาบที่เปิดเช็คชื่อ</p></div>';
+  S.sessions.forEach(se => {
+    if (se.blocked) h += `<div class="hero st-ขาด"><div class="ic">!</div><div class="big">เช็คชื่อไม่ได้</div><div>เครื่องนี้เช็คชื่อให้คนอื่นไปแล้วในคาบนี้ แจ้งครู</div></div>`;
+    else h += `<div class="hero st-${esc(se.status)}"><div class="ic">${se.status === 'มา' || se.status === 'สาย' ? '✓' : '•'}</div>
+      <div class="big">${esc(se.status)}</div><div>${esc(se.label)} คาบ ${perTxt(se)}${se.time ? ' · ' + esc(se.time.slice(0,5)) + ' น.' : ''}</div></div>`;
+    if (se.quiz && !se.blocked) h += `<div class="card"><div class="row"><div><h3 style="margin:0">ควิซ: ${esc(se.quiz.title)}</h3><small>${se.quiz.n} ข้อ${se.quiz.timeLimit ? ' · ' + se.quiz.timeLimit + ' นาที' : ''}</small></div><button class="btn ${se.quiz.done ? '' : 'pri'}" data-act="sQuiz" data-id="${se.sessionId}">${se.quiz.done ? 'ดูผล' : se.quiz.started ? 'ทำต่อ' : 'เริ่มทำ'}</button></div></div>`;
+    if (se.exit) h += se.exit.done ? '<div class="card center">ส่ง Exit ticket แล้ว ขอบคุณ</div>' : `<div class="card"><h3>Exit ticket</h3><p>${esc(se.exit.q || 'วันนี้ได้เรียนรู้อะไร')}</p>
+      <label>เข้าใจบทเรียนวันนี้แค่ไหน (1 = ยังไม่เข้าใจ, 5 = เข้าใจมาก)</label>
+      <div class="rate">${[1,2,3,4,5].map(n => `<button class="btn ${S.rate[se.sessionId] === n ? 'on' : ''}" data-act="sRate" data-id="${se.sessionId}" data-n="${n}">${n}</button>`).join('')}</div>
+      <label>คำตอบ</label><textarea class="full" rows="3" id="ex_${se.sessionId}"></textarea>
+      <p><button class="btn pri" data-act="sExit" data-id="${se.sessionId}">ส่งคำตอบ</button></p></div>`;
+  });
+  h += '<button class="btn" style="width:100%" data-act="sScores">ดูคะแนนและเวลาเรียนของฉัน</button><p class="center"><button class="btn sm" data-act="sLogout">ไม่ใช่เครื่องของฉัน / เปลี่ยนคน</button></p>';
+  return h;
+}
+function vQuiz(){
+  const z = S.qz.data;
+  if (z.done) {
+    let h = `<div class="row"><h1>${esc(S.qz.title)}</h1><button class="btn sm" data-act="sQuizBack">กลับ</button></div>`;
+    if (z.hidden) return h + '<div class="hero st-มา"><div class="ic">✓</div><div class="big">ส่งแล้ว</div><div>ครูยังไม่ประกาศคะแนน</div></div>';
+    const qs = S.qz.qs, by = {}; (qs || []).forEach((q, i) => by[q.id] = i + 1);
+    h += `<div class="hero st-มา"><div class="ic">✓</div><div class="big">${z.score} / ${z.max}</div><div>ส่งแล้ว</div></div><div class="card">`;
+    h += z.detail.map((d, i) => `<div class="stu"><span class="nm">ข้อ ${by[d.id] || i + 1}</span><span>${d.ok === null ? (d.got == null ? '<span class="mut">รอครูตรวจ</span>' : d.got + ' / ' + d.pts) : d.ok ? '<span class="ok">✓ ถูก</span>' : '<span class="ng">✗ ผิด</span>'}</span></div>`).join('');
+    return h + '</div>';
+  }
+  let h = `<div class="qtime"><b>${esc(S.qz.title)}</b><span class="wrap">${z.left == null ? '' : '<span>เหลือ <b id="qtime">' + fmtT(z.left) + '</b></span>'}<button class="btn sm" data-act="sQuizBack">พักไว้ก่อน</button></span></div><p class="mut" style="margin:0 0 8px">ห้ามสลับแอปหรือออกจากหน้านี้ระหว่างทำ ระบบจะแจ้งครู${S.qzLeaves ? ` · <b class="warn">ออกจากหน้าแล้ว ${S.qzLeaves} ครั้ง</b>` : ''}</p>`;
+  z.qs.forEach((q, i) => { const v = S.qa[q.id] == null ? '' : String(S.qa[q.id]);
+    h += `<div class="card"><b>ข้อ ${i + 1}</b> <small>(${q.pts} คะแนน)</small><p style="margin:.4em 0">${nl(q.q)}</p>${q.img ? `<img class="qimg" data-fid="${esc(q.img)}" alt="รูปประกอบคำถาม">` : ''}`;
+    if (q.type === 'mc') h += q.choices.map(c => `<label class="opt"><input type="radio" name="qa_${q.id}" value="${c.k}" data-qa="${q.id}" ${v === String(c.k) ? 'checked' : ''}><span>${nl(c.t)}</span></label>`).join('');
+    else if (q.type === 'tf') h += [['T', 'ถูก'], ['F', 'ผิด']].map(o => `<label class="opt"><input type="radio" name="qa_${q.id}" value="${o[0]}" data-qa="${q.id}" ${v === o[0] ? 'checked' : ''}><span>${o[1]}</span></label>`).join('');
+    else if (q.type === 'num') h += `<div class="wrap"><input class="scin" style="width:170px" inputmode="decimal" data-qa="${q.id}" value="${esc(v)}" placeholder="ตัวเลข เช่น 0.25 หรือ 6.02e23"> ${esc(q.unit || '')}</div>`;
+    else if (q.type === 'short') h += `<input class="full" data-qa="${q.id}" value="${esc(v)}" placeholder="คำตอบ">`;
+    else h += `<textarea class="full" rows="4" data-qa="${q.id}" placeholder="เขียนคำตอบ">${esc(v)}</textarea>`;
+    h += '</div>'; });
+  return h + '<button class="btn pri" style="width:100%" data-act="sQuizSend">ส่งคำตอบ</button>';
+}
+const fmtT = x => Math.floor(Math.max(0, x) / 60) + ':' + String(Math.max(0, x) % 60).padStart(2, '0');
+function qTimer(){
+  clearInterval(S.qt); const z = S.qz.data; if (z.done || z.left == null) return;
+  const end = Date.now() + z.left * 1000;
+  S.qt = setInterval(() => { const r = Math.round((end - Date.now()) / 1000), el = $('#qtime'); if (el) el.textContent = fmtT(r);
+    if (r <= 0) { clearInterval(S.qt); qSubmit(true); } }, 1000);
+}
+async function qSubmit(auto){
+  if (S.qSending) return;
+  await run(async () => { if (S.step !== 'quiz' || S.qz.data.done) return;
+    const miss = S.qz.data.qs.filter(q => S.qa[q.id] == null || String(S.qa[q.id]).trim() === '').length;
+    if (!auto && !(await ask(miss ? `ยังไม่ได้ตอบ ${miss} ข้อ ส่งเลยไหม? ส่งแล้วแก้ไม่ได้` : 'ส่งคำตอบ? ส่งแล้วแก้ไม่ได้', { yes: 'ส่ง' }))) return;
+    if (S.step !== 'quiz' || S.qz.data.done) return;
+    clearInterval(S.qt); S.qSending = true; let r; try { r = await api('sQuizSubmit', { token: LS.get('tok'), sessionId: S.qz.sessionId, answers: S.qa }); } finally { S.qSending = false; }
+    S.qz.data = r; if (auto) toast('หมดเวลา ระบบส่งคำตอบให้แล้ว'); draw(); });
+}
+function vMyScores(){
+  let h = '<div class="row"><h1>คะแนนของฉัน</h1><button class="btn sm" data-act="sHome">กลับ</button></div>';
+  S.scores.subjects.forEach(sb => {
+    const a = sb.att;
+    h += `<div class="card"><h2>${esc(sb.name)} <small>${esc(sb.code)}</small></h2>
+      <div class="row"><div>คะแนนรวม<div class="big">${sb.net.total == null ? '<small class="mut">ยังไม่ประกาศ</small>' : sb.net.total + ' <small>/ 100</small>'}</div></div>${sb.grade != null ? `<div class="center">เกรดขณะนี้<div class="big">${sb.grade}</div></div>` : ''}</div>
+      <h3>เวลาเรียน ${a.pct == null ? '' : `<span class="${a.pct < (S.scores.msPct || 80) ? 'warn' : ''}">${a.pct}%</span>`}${a.pct != null && a.pct < (S.scores.msPct || 80) ? ` <small class="warn">ต่ำกว่าเกณฑ์ ${S.scores.msPct || 80}% (เสี่ยง มส.)</small>` : ''}</h3>
+      ${a.total ? `<div class="bar2"><i style="width:${a.pct}%"></i></div><p class="mut">${ST.map(s => s + ' ' + a.c[s]).join(' · ')} (รวม ${a.total} คาบ)</p>` : '<p class="mut">ยังไม่มีคาบที่บันทึก</p>'}`;
+    if (sb.traits) h += `<h3>คุณลักษณะ / อ่าน คิด เขียน</h3><p style="line-height:1.7;margin:0">${['char', 'rtw'].map(k => `${TKN[k]}: ${trTxt(sb.traits[k])}`).join('<br>')}</p>`;
+    CATS.forEach(c => {
+      const its = sb.items.filter(i => i.cat === c), n = sb.net.cats[c];
+      h += `<h3>${CATN[c]} <small>${n.net == null ? 'ยังไม่ประกาศ' : n.net} / ${n.w}</small></h3>`;
+      h += its.length ? its.map(myItem).join('') : '<p class="mut">ยังไม่มีรายการ</p>';
+    });
+    h += '</div>';
+  });
+  return h;
+}
+function myItem(i){
+  const can = (i.cat === 'pre' || i.cat === 'post') && !i.quiz, late = i.sub === 'ช้า' ? ' <small>(ส่งช้า)</small>' : '';
+  let r;
+  const hid = i.hidden ? ' <small class="mut">· คะแนนยังไม่ประกาศ</small>' : '';
+  if (i.score !== '') r = '<b>' + esc(i.score) + '</b> / ' + esc(i.max) + late;
+  else if (i.sub === 'รอ') r = `<span class="pend">รอครูยืนยัน</span> <button class="btn sm" data-act="sSubmit" data-id="${i.itemId}" data-want="">ยกเลิก</button>`;
+  else if (i.sub) r = (i.hidden ? 'ส่งแล้ว' : 'ส่งแล้ว รอตรวจ') + late + hid;
+  else if (i.quiz) r = `<span class="mut">ยังไม่ได้ทำควิซ / ${esc(i.max)}</span>`;
+  else r = `<span class="mut">ยังไม่ส่ง / ${esc(i.max)}</span>` + hid + (can ? ` <button class="btn sm pri" data-act="sSubmit" data-id="${i.itemId}" data-want="รอ">ส่งงาน</button>` : '');
+  const up = can && i.score === '', canDel = i.sub === '' || i.sub === 'รอ', fs = i.files || [];
+  const ths = fs.length || up ? `<div class="ths">${fs.map(f => thumb(f, canDel && i.score === '' ? 'sFileDel' : '')).join('')}${up && fs.length < 4 ? `<label class="btn sm" style="margin:0;color:var(--ink)">📎 แนบรูป<input type="file" accept="image/*" hidden data-up="${i.itemId}"></label>` : ''}</div>` : '';
+  const du = i.due && !(i.sub || i.score !== '') ? dueTxt(i.due, S.scores.today, false) : null;
+  return `<div class="stu" style="flex-wrap:wrap"><span class="nm">${esc(i.label)}${du ? `<br><span class="duep ${du.c}">${du.t}</span>` : ''}</span><span>${r}</span>${ths}</div>`;
+}
+const SA = {
+  imgView: d => imgView(d.id),
+  sFileDel: d => run(async () => { if (!(await ask('ลบรูปนี้?', { danger: true, yes: 'ลบ' }))) return; await api('sFileDel', { token: LS.get('tok'), fileId: d.id });
+    S.scores.subjects.forEach(sb => sb.items.forEach(i => { i.files = (i.files || []).filter(f => f !== d.id); })); toast('ลบรูปแล้ว'); draw(); }),
+  sUpload: (id, file) => run(async () => { const data = await readImg(file); const r = await api('sUpload', { token: LS.get('tok'), itemId: id, data });
+    IMG[r.fileId] = data; S.scores.subjects.forEach(sb => sb.items.forEach(i => { if (i.itemId === id) { i.files = (i.files || []).concat(r.fileId); i.sub = r.sub; } })); toast('แนบรูปแล้ว รอครูยืนยัน'); draw(); }),
+  sQuiz: d => run(async () => { const se = S.sessions.find(x => x.sessionId === d.id);
+    if (!se.quiz.started && !se.quiz.done && !(await ask(`${se.quiz.n} ข้อ${se.quiz.timeLimit ? ' · เวลา ' + se.quiz.timeLimit + ' นาที เริ่มจับเวลาทันทีที่กดเริ่ม' : ''} · ส่งได้ครั้งเดียว`, { title: 'เริ่มทำควิซ: ' + se.quiz.title, yes: 'เริ่มทำ' }))) return;
+    const z = await api('sQuizStart', { token: LS.get('tok'), sessionId: d.id }); if (!S.qz || S.qz.sessionId !== d.id) { S.qa = {}; S.qzLeaves = 0; } S.qz = { sessionId: d.id, data: z, qs: z.qs || (S.qz && S.qz.sessionId === d.id ? S.qz.qs : null), title: se.quiz.title }; S.step = 'quiz'; draw(); qTimer(); }),
+  sQuizSend: () => qSubmit(false),
+  sQuizBack: () => { clearInterval(S.qt); S.step = 'home'; sBoot(); },
+  sSubmit: d => run(async () => {
+    const r = await api('sSubmit', { token: LS.get('tok'), itemId: d.id, want: d.want || '' });
+    S.scores.subjects.forEach(sb => sb.items.forEach(i => { if (i.itemId === d.id) i.sub = r.sub; }));
+    toast(r.sub ? 'ส่งแล้ว รอครูยืนยัน' : 'ยกเลิกแล้ว'); draw();
+  }),
+  sRetry: () => sBoot(),
+  sBack: () => { S.step = 'id'; draw(); },
+  sHome: () => { S.step = 'home'; draw(); },
+  sLogout: async () => { if (await ask('ออกจากเครื่องนี้เพื่อให้คนอื่นลงทะเบียน?')) { LS.set('tok', null); S.me = null; S.step = 'id'; draw(); } },
+  sLookup: () => run(async () => {
+    const id = $('#sid').value.trim(); if (!id) return toast('กรอกเลขประจำตัวก่อน');
+    const d = await api('sLookup', { id }); S.reg = Object.assign({ id }, d); S.step = d.notFound ? 'new' : 'pin'; draw();
+  }),
+  sRegister: () => run(async () => {
+    const pin = $('#spin').value.trim();
+    if (!/^\d{4}$/.test(pin)) return toast('รหัสต้องเป็นตัวเลข 4 หลัก');
+    const nk = $('#snick'), d = await api('sRegister', nk ? { id: S.reg.id, pin, nick: nk.value } : { id: S.reg.id, pin });
+    if (d.error) return toast(d.error);
+    LS.set('tok', d.token); await sBoot();
+  }),
+  sForgot: () => run(async () => { if (!(await ask('ส่งคำขอให้ครูรีเซ็ตรหัส 4 หลักของ ' + (S.reg.name || '') + '?', { yes: 'ส่งคำขอ' }))) return;
+    await api('sForgot', { id: S.reg.id }); S.step = 'forgot'; draw(); }),
+  sSelf: () => run(async () => {
+    const p = { id: S.reg.id, name: $('#nName').value, nick: $('#nNick').value, room: $('#nRoom').value, no: $('#nNo').value, pin: $('#nPin').value.trim() };
+    if (!p.room) return toast('เลือกห้องก่อน'); if (!/^\d{4}$/.test(p.pin)) return toast('รหัสต้องเป็นตัวเลข 4 หลัก');
+    const d = await api('sSelfRegister', p); LS.set('tok', d.token); toast('ลงทะเบียนแล้ว'); await sBoot(); }),
+  sRate: d => { S.rate[d.id] = +d.n; const ta = $('#ex_' + d.id), v = ta ? ta.value : ''; draw(); const tb = $('#ex_' + d.id); if (tb) tb.value = v; },
+  sExit: d => run(async () => {
+    if (!S.rate[d.id]) return toast('เลือกระดับความเข้าใจก่อน');
+    await api('sExit', { token: LS.get('tok'), sessionId: d.id, rating: S.rate[d.id], answer: $('#ex_' + d.id).value });
+    const se = S.sessions.find(x => x.sessionId === d.id); if (se && se.exit) se.exit.done = true;
+    toast('ส่งแล้ว'); draw();
+  }),
+  sScores: () => run(async () => { S.scores = await api('sScores', { token: LS.get('tok') }); S.step = 'scores'; draw(); })
+};
+
+/* =================== ครู =================== */
+const T = { tkind:'char', tg:null, tdraft:{}, sview:'track', dash:null, boot:null, tab:'today', live:null, showP2:false, gid:'', att:null, sg:null, item:null, draft:null, more:'menu', room:'', log:null, timer:null };
+const grp = id => T.boot.groups.find(g => g.groupId === id);
+const subj = id => T.boot.subjects.find(s => s.subjectId === id);
+const roomsOf = g => g.rooms.split(',').map(x => x.trim());
+const stuOf = g => T.boot.students.filter(s => s.active !== false && roomsOf(g).includes(s.room))
+  .sort((a, b) => a.room.localeCompare(b.room, 'th', { numeric:true }) || (+a.no - +b.no));
+const itemsOf = sid => T.boot.items.filter(i => i.subjectId === sid).sort((a, b) => CATS.indexOf(a.cat) - CATS.indexOf(b.cat) || (+a.ord - +b.ord));
+const NOGRP = '<p class="mut">ยังไม่มีกลุ่มเรียน เพิ่มได้ที่ เพิ่มเติม › วิชาและสัดส่วนคะแนน</p>';
+const multi = g => roomsOf(g).length > 1;
+const nickOf = s => s.nick ? ' <small>(' + esc(s.nick) + ')</small>' : '';
+const stuName = (s, g) => `<button class="nmlink" data-act="stu" data-stu="${esc(s.studentId)}">${multi(g) ? '<small>' + esc(s.room) + '</small> ' : ''}${esc(s.name)}${nickOf(s)}</button>`;
+const grpSel = (id, cur) => `<select id="${id}" data-chg="${id}">${T.boot.groups.map(g => `<option value="${g.groupId}" ${g.groupId === cur ? 'selected' : ''}>${esc(g.label)} · ${esc((subj(g.subjectId) || {}).name || '')}</option>`).join('')}</select>`;
+
+async function tLoad(){ await run(async () => { const want = T.tab === 'today'; const r = await Promise.all([tapi('tBoot'), want ? tapi('tDash') : null]); T.boot = r[0]; if (want) T.dash = r[1]; if (!grp(T.gid)) T.gid = T.boot.groups[0] ? T.boot.groups[0].groupId : ''; }); draw(); }
+function vTeacher(){
+  if (!LS.get('tt')) return `<h1>เข้าสู่ระบบครู</h1><div class="card"><label>รหัสผ่าน (ดูในชีต Config)</label><input class="full" id="tpass" type="password"><p><button class="btn pri" data-act="tLogin">เข้าสู่ระบบ</button></p></div>`;
+  if (!T.boot) return '<div class="card center">กำลังโหลด… <button class="btn sm" data-act="tReload">โหลดใหม่</button></div>';
+  const tabs = [['today','วันนี้'],['att','เช็คชื่อ'],['score','คะแนน'],['tt','ตารางสอน'],['more','เพิ่มเติม']];
+  const cur = T.tab === 'live' ? 'today' : T.tab === 'item' ? 'score' : T.tab === 'stu' ? (T.stuFrom || 'score') : T.tab;
+  const body = { today:vToday, live:vLive, att:vAtt, score:vScore, item:vItem, tt:vTT, more:vMore, stu:vStu }[T.tab]();
+  return '<div class="shell"><nav class="menu" aria-label="เมนูหลัก">' + tabs.map(t => `<button class="${cur === t[0] ? 'on' : ''}" data-act="tab" data-t="${t[0]}" ${cur === t[0] ? 'aria-current="page"' : ''}>${ICO[t[0]]}<span>${t[1]}</span></button>`).join('') + '</nav><div class="main">' + body + '</div></div>';
+}
+
+/* ----- วันนี้ / คาบสด ----- */
+function ring(n, total, size){
+  const c = 2 * Math.PI * 54, f = total ? Math.min(1, n / total) : 0;
+  return `<svg class="ring" width="${size}" height="${size}" viewBox="0 0 132 132" role="img" aria-label="เช็คชื่อแล้ว ${n} จาก ${total} คน"><circle cx="66" cy="66" r="54" fill="none" stroke="var(--line)" stroke-width="12"/>${f > 0 ? `<circle cx="66" cy="66" r="54" fill="none" stroke="var(--ok)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 66 66)"/>` : ''}<text x="66" y="74" text-anchor="middle" font-size="32" font-weight="700" fill="currentColor">${n}</text></svg>`;
+}
+const KS = [['s','ส่ง'],['l','ช้า'],['w','รอยืนยัน'],['m','ค้าง'],['z','ไม่ส่ง (ให้คะแนนแล้ว)'],['o','ยังไม่ส่ง']];
+const sbar = (t, n) => `<div class="sbar" role="img" aria-label="${KS.filter(k => t[k[0]]).map(k => k[1] + ' ' + t[k[0]]).join(', ')}">${KS.map(k => t[k[0]] ? `<i class="k-${k[0]}" style="width:${(t[k[0]] / n * 100).toFixed(2)}%"></i>` : '').join('')}</div>`;
+const leg = t => `<div class="leg">${KS.map(k => t[k[0]] ? `<span><i class="k-${k[0]}"></i>${k[1]} ${t[k[0]]}</span>` : '').join('')}</div>`;
+function vToday(){
+  const b = T.boot, D = T.dash, slots = b.timetable.filter(x => +x.day === +b.dow && grp(x.groupId)).sort((x, y) => x.period - y.period), nP = slots.reduce((a, x) => a + (+x.span === 2 ? 2 : 1), 0);
+  let h = `<h1>วันนี้ <small>${thDate(b.today, b.dow)}</small></h1>`;
+  if (D && D.resetN) h += `<div class="card row" style="border-color:var(--late)"><span><b>นักเรียนขอรีเซ็ตรหัส ${D.resetN} คน</b></span><button class="btn sm pri" data-act="goReq">ดูคำขอ</button></div>`;
+  if (D) { const L = D.live[0];
+    h += `<div class="kpis">
+      <button class="kpi" data-act="${L ? 'live' : 'tab'}" ${L ? `data-id="${L.sessionId}"` : 'data-t="tt"'}><small>${L ? 'มาเรียนคาบนี้ · ' + esc(L.label) : 'คาบวันนี้'}</small><b style="color:var(--ok)">${L ? L.checked + '<small style="display:inline"> / ' + L.total + '</small>' : nP}</b>${L ? '' : `<small>${slots.length} ช่วง${nP > slots.length ? ' · มีคาบคู่' : ''}</small>`}</button>
+      <button class="kpi" data-act="goTrack"><small>ค้างส่ง (เลยกำหนด)</small><b style="color:var(--abs)">${D.k.overdue}</b><small>${D.k.oweN} คน</small></button>
+      <button class="kpi" data-act="goTrack"><small>รอยืนยันการส่ง</small><b style="color:var(--act)">${D.k.wait}</b></button>
+      <button class="kpi" data-act="goTrack"><small>ส่งแล้ว รอตรวจ</small><b style="color:var(--late)">${D.k.grade}</b>${D.k.quizText ? `<small>ข้อเขียนควิซ ${D.k.quizText}</small>` : ''}</button></div>`; }
+  h += '<div class="cols"><div>';
+  const live = D ? D.live : b.open.map(se => ({ sessionId: se.sessionId, label: (grp(se.groupId) || {}).label, period: se.period, span: se.span, openedAt: se.openedAt, checked: null }));
+  h += live.map(L => { const se = b.open.find(x => x.sessionId === L.sessionId) || L, miss = L.total - L.checked;
+    return `<section class="card" style="border:1.5px solid var(--ok)"><div class="wrap" style="gap:14px;flex-wrap:nowrap">${L.checked != null ? ring(L.checked, L.total, 92) : ''}
+      <div style="flex:1;min-width:0"><h2 style="margin:0">${esc(L.label)} <small>${esc(L.subject || '')}</small></h2><small>กำลังเปิดเช็คชื่อ · คาบ ${perTxt(se)} · ปิดเอง ${closeAt(se)} น.</small>
+      ${L.checked != null ? `<div class="wrap" style="margin:8px 0">${ST.map(x => `<span class="a st-${x}">${x === 'กิจกรรม' ? 'กิจ.' : x} ${L.c[x]}</span>`).join('')}${miss ? `<span class="warn" style="font-size:.9rem">ยังไม่เช็ค ${miss}</span>` : ''}</div>` : ''}
+      ${L.quizOpen ? `<small>ควิซเปิดอยู่ · ส่งแล้ว ${L.quizDone}/${L.total}</small>` : ''}</div></div>
+      <p class="wrap" style="margin:10px 0 0"><button class="btn pri" data-act="live" data-id="${L.sessionId}">ดูรายชื่อ</button></p></section>`; }).join('');
+  h += `<section class="card"><h2>ตารางสอนวันนี้ <small>${nP} คาบ</small></h2>`;
+  h += slots.length ? slots.map(sl => { const g = grp(sl.groupId); if (!g) return ''; const op = b.open.find(se => se.groupId === sl.groupId);
+    return `<div class="stu"><div style="width:96px;flex:none" class="mut">${esc(pTime(+sl.period, sl.span) || 'คาบ ' + sl.period)}</div><div class="nm" style="white-space:normal"><b>${esc(g.label)}</b> <small>${+sl.span === 2 ? 'คาบคู่' : ''}</small><br><small>คาบ ${perTxt(sl)}${pTime(+sl.period, sl.span) ? ' · ' + pTime(+sl.period, sl.span) + ' น.' : ''} · ${esc((subj(g.subjectId) || {}).name || '')}</small></div>${op ? `<button class="btn sm" data-act="live" data-id="${op.sessionId}">เปิดอยู่</button>` : `<button class="btn pri sm" data-act="open" data-g="${g.groupId}" data-p="${sl.period}" data-s="${sl.span}">เปิดคาบ</button>`}</div>`; }).join('')
+    : '<p class="mut">วันนี้ไม่มีคาบในตารางสอน (ตั้งได้ที่แท็บ "ตารางสอน")</p>';
+  h += `<details style="margin-top:8px"><summary>เปิดคาบนอกตาราง</summary><div class="wrap" style="margin-top:8px">${grpSel('oG', T.gid)}
+    <select id="oP">${perOpts()}</select><select id="oS"><option value="1">คาบเดี่ยว</option><option value="2">คาบคู่</option></select>
+    <button class="btn pri" data-act="openX">เปิดคาบ</button></div></details></section></div><div>`;
+  if (D) {
+    h += `<section class="card"><div class="row"><h2>งานที่ต้องตาม</h2><button class="btn sm" data-act="goTrack">ดูทั้งหมด</button></div>`;
+    h += D.tasks.length ? D.tasks.slice(0, 5).map(t => { const du = dueTxt(t.due, D.today, !t.m && !t.o);
+      return `<div class="task tap" data-act="goTrack" data-g="${t.groupId}" style="cursor:pointer"><div class="row"><b>${esc(t.name)}</b><small>${esc(t.label)}</small></div><div class="duep ${du.c}">${du.t}</div>${sbar(t, t.n)}
+        <small>${[t.m ? `<span class="warn">ค้าง ${t.m}</span>` : '', t.w ? 'รอยืนยัน ' + t.w : '', t.ug ? 'รอตรวจ ' + t.ug : ''].filter(Boolean).join(' · ')}</small></div>`; }).join('')
+      : '<p class="mut">ไม่มีงานค้าง รอยืนยัน หรือรอตรวจ</p>';
+    h += '</section><section class="card"><h2>เสี่ยง มส. (เวลาเรียน &lt; ' + (D.msPct || 80) + '%)' + (D.lowN ? ` <small>${D.lowN} คน</small>` : '') + '</h2>';
+    h += D.low.length ? D.low.map(x => `<div class="stu"><span class="nm"><button class="nmlink" data-act="stu" data-stu="${esc(x.studentId)}">${esc(x.name)}</button> <small>${esc(x.label)}</small></span><b class="warn">${x.pct}%</b></div>`).join('') : '<p class="mut">ไม่มี</p>';
+    h += '</section>';
+  }
+  return h + '</div></div>';
+}
+const perOpts = cur => { let s = ''; for (let i = 1; i <= (+T.boot.cfg.periods || 9); i++) s += `<option value="${i}" ${+cur === i ? 'selected' : ''}>คาบ ${i}</option>`; return s; };
+function vLive(){
+  const L = T.live, se = L.session, g = grp(se.groupId), open = se.state === 'open';
+  const its = itemsOf(g.subjectId).filter(i => i.cat === 'pre' || i.cat === 'post');
+  return `<div class="row"><h1>${esc(g.label)} <small>${fmtD(se.date)} คาบ ${perTxt(se)}</small></h1><button class="btn sm" data-act="liveBack">กลับ</button></div>
+  <div class="card wrap"><b style="color:${open ? 'var(--ok)' : 'var(--mut)'}">${open ? '● เปิดเช็คชื่ออยู่' : 'ปิดคาบแล้ว'}</b>
+    ${open ? `<small class="mut">ปิดเองอัตโนมัติ ${closeAt(se)} น. · คนที่ไม่เช็ค = ขาด</small><button class="btn pri sm" data-act="close">ปิดคาบ</button>` : '<button class="btn sm" data-act="reopen">เปิดเช็คชื่ออีกครั้ง</button>'}
+    <button class="btn sm" data-act="span">${+se.span === 2 ? 'เปลี่ยนเป็นคาบเดี่ยว' : 'เปลี่ยนเป็นคาบคู่'}</button>
+    ${+se.span === 2 ? `<button class="btn sm" data-act="p2">${T.showP2 ? 'ซ่อนคาบที่ 2' : 'แก้คาบที่ 2 แยก'}</button>` : ''}
+    <button class="btn sm" data-act="fill" data-st="มา">มาทั้งหมด</button><button class="btn sm" data-act="fill" data-st="ขาด">ขาดทั้งหมด</button>
+    <button class="btn sm dan" data-act="sesDel">ลบคาบ</button></div>
+  <details class="card" ${se.exitOpen === '1' ? 'open' : ''}><summary>Exit ticket ${se.exitOpen === '1' ? '<small style="color:var(--ok)">เปิดรับคำตอบอยู่</small>' : ''}</summary>
+    <label>คำถามท้ายคาบ</label><input class="full" id="exQ" value="${esc(se.exitQ)}" placeholder="เช่น วันนี้ได้เรียนรู้อะไร / ยังสงสัยเรื่องใด">
+    <label>ผูกกับช่องคะแนน (คนที่ตอบจะถูกติ๊ก "ส่ง" ให้เอง ให้คะแนนทีหลังได้)</label>
+    <select class="full" id="exItem"><option value="">ไม่ผูก</option><option value="+pre">+ สร้างช่องใหม่ (ก่อนกลางภาค)</option><option value="+post">+ สร้างช่องใหม่ (หลังกลางภาค)</option>
+      ${its.map(i => `<option value="${i.itemId}" ${i.itemId === se.exitItemId ? 'selected' : ''}>${esc(i.label)} (${CATS_S[i.cat]})</option>`).join('')}</select>
+    <p><button class="btn ${se.exitOpen === '1' ? '' : 'pri'}" data-act="exToggle">${se.exitOpen === '1' ? 'ปิดรับคำตอบ' : 'เปิดให้นักเรียนตอบ'}</button></p>
+    <div id="exRes">${exRes()}</div></details>
+  ${open ? '' : stuBox(se)}
+  ${quizBox()}
+  <div class="card" id="liveBody">${liveBody()}</div>`;
+}
+function closeAt(se){ const t = new Date(+se.openedAt + ((+T.boot.cfg.periodMin || 50) * (+se.span || 1) + 10) * 60000 + 7 * 3600000); return String(t.getUTCHours()).padStart(2, '0') + ':' + String(t.getUTCMinutes()).padStart(2, '0'); }
+function leaveBox(){
+  const L = T.live, lv = L.quizLeaves || [], g = grp(L.session.groupId);
+  if (!lv.length) return '';
+  const nm = {}; stuOf(g).forEach(s => nm[s.studentId] = s);
+  return `<div class="lvw"><b class="warn">นักเรียนออกจากหน้าควิซ ${lv.length} คน</b>${lv.map(x => `<div class="stu" style="padding:4px 0"><span class="nm">${nm[x.studentId] ? esc(nm[x.studentId].no) + '. ' + esc(nm[x.studentId].name) : esc(x.studentId)}</span><b class="warn">${x.n} ครั้ง</b><small>${x.done ? 'ส่งแล้ว' : 'กำลังทำ'}</small></div>`).join('')}</div>`;
+}
+function quizBox(){
+  const se = T.live.session, g = grp(se.groupId), on = se.quizOpen === '1', list = (T.quizzes || []).filter(q => q.subjectId === g.subjectId);
+  const qz = list.find(q => q.quizId === se.quizId), done = (T.live.quizDone || []).length;
+  return `<details class="card" ${on ? 'open' : ''}><summary>ควิซ ${on ? `<small style="color:var(--ok)">เปิดอยู่ · ส่งแล้ว <b id="qzN">${done}</b>/${stuOf(g).length}</small>` : ''}</summary>
+  ${list.length ? `<label>เลือกควิซ</label><select class="full" id="qzSel" ${on ? 'disabled' : ''}>${list.map(q => `<option value="${q.quizId}" ${q.quizId === se.quizId ? 'selected' : ''}>${esc(q.title)} (${q.qs.length} ข้อ${+q.timeLimit ? ' · ' + q.timeLimit + ' นาที' : ''})</option>`).join('')}</select>
+  <p class="wrap"><button class="btn ${on ? '' : 'pri'}" data-act="qzToggle">${on ? 'ปิดควิซ' : 'เปิดให้นักเรียนทำ'}</button>${qz ? `<button class="btn" data-act="qzRes" data-id="${qz.quizId}">ดูผล</button>` : ''}</p>
+  <div id="qzLeave">${leaveBox()}</div>
+  <p class="mut">นักเรียนแตะแท็กแล้วเห็นปุ่ม "เริ่มทำ" ตรวจอัตโนมัติและลงคะแนนในช่อง "ควิซ: ชื่อ" ให้เอง ถ้านักเรียนสลับแอป/ออกจากหน้าระหว่างทำ จะขึ้นเตือนตรงนี้</p>` : '<p class="mut">ยังไม่มีควิซของวิชานี้ สร้างได้ที่ เพิ่มเติม › ควิซ</p>'}</details>`;
+}
+function exRes(){
+  const L = T.live, g = grp(L.session.groupId), ex = L.exits;
+  if (!ex.length) return '<p class="mut">ยังไม่มีคำตอบ</p>';
+  const rated = ex.filter(e => +e.rating), avg = rated.length ? (rated.reduce((a, e) => a + +e.rating, 0) / rated.length).toFixed(1) : '-';
+  const nm = {}; stuOf(g).forEach(s => nm[s.studentId] = s.name);
+  return `<p><b>ตอบแล้ว ${ex.length} คน</b> · ความเข้าใจเฉลี่ย ${avg}/5 · ${[1,2,3,4,5].map(n => n + '★ ' + ex.filter(e => +e.rating === n).length).join(' | ')}</p>` +
+    ex.slice().sort((a, b) => +a.rating - +b.rating).map(e => `<div class="stu"><span class="no">${esc(e.rating)}★</span><span style="flex:1"><small>${esc(nm[e.studentId] || e.studentId)}</small><br>${esc(e.answer)}</span></div>`).join('');
+}
+function chips(sid, k, cur){
+  return ST.map(s => `<button class="chip ${cur === s ? 'on st-' + s : ''}" data-act="setAtt" data-stu="${esc(sid)}" data-k="${k}" data-st="${s}">${s === 'กิจกรรม' ? 'กิจ.' : s}</button>`).join('');
+}
+function liveBody(){
+  const L = T.live, se = L.session, g = grp(se.groupId), studs = stuOf(g), am = {};
+  L.att.forEach(a => am[a.studentId] = a);
+  const n = studs.filter(s => am[s.studentId] && am[s.studentId].s1).length;
+  let h = `<div class="row"><b class="big">เช็คแล้ว ${n}/${studs.length}</b><button class="btn sm" data-act="copyLive">${ICO.copy} คัดลอกรายชื่อ</button></div><div class="wrap" style="gap:4px;margin:4px 0 6px">${ST.map(s => `<span class="a st-${s}">${s} ${studs.filter(x => am[x.studentId] && am[x.studentId].s1 === s).length}</span>`).join('')}<span class="a" style="background:var(--mut)">ยังไม่เช็ค ${studs.length - n}</span></div>`;
+  if (!studs.length) h += '<p class="warn">ยังไม่มีรายชื่อนักเรียนห้องนี้ในชีต Students</p>';
+  studs.forEach(s => { const a = am[s.studentId] || {};
+    h += `<div class="stu"><span class="no">${esc(s.no)}</span><span class="nm">${stuName(s, g)}${a.src === 'nfc' ? ' <small>' + esc((a.time || '').slice(0,5)) + '</small>' : ''}</span><span class="wrap" style="gap:3px;flex-wrap:nowrap">${chips(s.studentId, 1, a.s1 || '')}</span></div>`;
+    if (+se.span === 2 && T.showP2) h += `<div class="stu" style="background:var(--soft)"><span class="no"></span><span class="nm mut">คาบที่ 2 ${a.s2 ? '' : '(ตามคาบแรก)'}</span><span class="wrap" style="gap:3px;flex-wrap:nowrap">${chips(s.studentId, 2, a.s2 || '')}</span></div>`;
+  });
+  return h;
+}
+function poll(){
+  clearInterval(T.timer);
+  T.timer = setInterval(async () => {
+    if (T.tab !== 'live' || !T.live || T.live.session.state !== 'open' || modalOpen() || document.hidden || T.pend) return;
+    try {
+      const d = await tapi('tLive', { sessionId: T.live.session.sessionId }, true);
+      if (T.tab !== 'live' || T.pend) return;
+      const changed = d.session.state !== T.live.session.state || d.session.exitOpen !== T.live.session.exitOpen || d.session.quizOpen !== T.live.session.quizOpen;
+      T.live = d;
+      if (changed) return draw();
+      const lb = $('#liveBody'), er = $('#exRes'), qn = $('#qzN'), ql = $('#qzLeave'); if (lb) lb.innerHTML = liveBody(); if (er) er.innerHTML = exRes(); if (qn) qn.textContent = (d.quizDone || []).length; if (ql) ql.innerHTML = leaveBox();
+      const prev = T.leaveSeen || {}, now = {}; let newer = null; (d.quizLeaves || []).forEach(x => { now[x.studentId] = x.n; if (x.n > (prev[x.studentId] || 0)) newer = x; });
+      if (newer && T.leaveSeen) { const st = T.boot.students.find(z => z.studentId === newer.studentId); toast('⚠ ' + (st ? st.name : newer.studentId) + ' ออกจากหน้าควิซ (' + newer.n + ' ครั้ง)'); }
+      T.leaveSeen = now;
+    } catch(e){}
+  }, 5000);
+}
+async function openLive(id){ [T.live, T.quizzes] = await Promise.all([tapi('tLive', { sessionId: id }), tapi('tQuizList')]); T.leaveSeen = {}; (T.live.quizLeaves || []).forEach(x => T.leaveSeen[x.studentId] = x.n); T.tab = 'live'; T.showP2 = false; draw(); poll(); }
+
+/* ----- ตารางเช็คชื่อย้อนหลัง ----- */
+function attSum(sessions, am){
+  const pres = String(T.boot.cfg.presentAs || 'มา,สาย,กิจกรรม').split(',').map(x => x.trim());
+  let total = 0, ok = 0; const c = { 'มา':0,'สาย':0,'ลา':0,'ขาด':0,'กิจกรรม':0 };
+  sessions.forEach(se => { const a = am[se.sessionId]; for (let k = 1; k <= (+se.span === 2 ? 2 : 1); k++) {
+    let st = a ? (k === 1 ? a.s1 : (a.s2 || a.s1)) : ''; if (!st) { if (se.state === 'open') continue; st = 'ขาด'; }
+    if (c[st] === undefined) continue; c[st]++; total++; if (pres.includes(st)) ok++; } });
+  return { c, total, pct: total ? Math.round(ok / total * 1000) / 10 : null };
+}
+const STUM = { 'มาเรียน':'มา', 'มาสาย':'สาย', 'ขาด':'ขาด', 'ลา':'ลา', 'กิจกรรม':'กิจกรรม', 'หนีเรียน':'หนี' };
+const stuMark = se => !se.stu ? '' : se.stu.err ? `<span class="stum err" title="ส่ง STUMIS ไม่สำเร็จ: ${esc(se.stu.err)}">!</span>` : se.stu.dirty ? '<span class="stum dirty" title="แก้หลังส่ง STUMIS ต้องส่งใหม่">●</span>' : '<span class="stum" title="ส่ง STUMIS แล้ว">✓</span>';
+const stuTodo = ss => ss.filter(se => se.state === 'closed' && +se.period > 0 && (!se.stu || se.stu.dirty));
+function stuBox(se){
+  const st = T.live.stu;
+  return `<div class="card row"><span><b>STUMIS</b> ${st && st.err ? `<span class="warn">ส่งอัตโนมัติไม่สำเร็จ: ${esc(st.err)}</span>` : st && st.at ? (st.dirty ? '<span style="color:var(--late)">● แก้หลังส่ง ต้องส่งใหม่</span>' : '<span style="color:var(--ok)">✓ ส่งแล้ว</span>') + ` <small class="mut">${esc(st.at)}</small>` : '<small class="mut">ยังไม่ได้ส่ง</small>'}${T.boot.cfg.stuAuto === '1' && (!st || st.dirty) && !(st && st.err) ? '<br><small class="mut">เปิดส่งอัตโนมัติไว้ จะส่งให้ภายใน 1 ชั่วโมง หรือกดส่งเองเลยก็ได้</small>' : ''}<br><small class="mut">ระบบจะเทียบกับ STUMIS ก่อน แล้วแสดงสิ่งที่จะเปลี่ยนให้ยืนยัน</small></span>
+    <button class="btn sm ${!st || st.dirty ? 'pri' : ''}" data-act="stuOne" data-id="${se.sessionId}">ส่งเข้า STUMIS</button></div>`;
+}
+function stuPartTxt(p){
+  const um = (p.unmatched || []).length ? `<br><small class="warn">หาในรายชื่อ STUMIS ไม่เจอ ${p.unmatched.length} คน (เลขประจำตัวและชื่อไม่ตรง): ${p.unmatched.map(esc).join(', ')}</small>` : '';
+  if (p.mode === 'new') { const c = {}; p.change.forEach(x => c[x.to] = (c[x.to] || 0) + 1);
+    return `บันทึกใหม่ ${p.change.length} คน <small class="mut">(${Object.entries(c).map(([k, v]) => (STUM[k] || k) + ' ' + v).join(' · ')})</small>`
+      + (p.missing.length ? `<br><small class="mut">ไม่อยู่ในกลุ่มนี้ของระบบเรา ${p.missing.length} คน → ขาด (ค่าเริ่มต้นของ STUMIS)</small>` : '') + um; }
+  const miss = p.missing.length ? `<br><small class="mut">ไม่แตะ ${p.missing.length} คนที่ไม่อยู่ในกลุ่มนี้</small>` : '';
+  return (p.change.length ? `แก้ ${p.change.length} คน<br>` + p.change.map(x => `<small>${esc(x.name)}: ${esc(STUM[x.from] || x.from)} → <b>${esc(STUM[x.to] || x.to)}</b></small>`).join('<br>') : '<span style="color:var(--ok)">ตรงกันแล้ว</span>') + miss + um;
+}
+async function stuCheck(ids){
+  const sess = ids.map(id => (T.att && T.att.sessions.find(x => x.sessionId === id)) || (T.live && T.live.session.sessionId === id ? T.live.session : null)).filter(Boolean), res = [];
+  for (let i = 0; i < sess.length; i++) {
+    modal(`<h3>กำลังเทียบกับ STUMIS</h3><p>${i + 1} / ${sess.length} คาบ · ${fmtD(sess[i].date)} คาบ ${perTxt(sess[i])}</p><p class="mut">ยังไม่มีการบันทึกใด ๆ</p>`);
+    try { res.push({ se: sess[i], r: await tapi('tStumisPush', { sessionId: sess[i].sessionId, dry: true }) }); }
+    catch(e){ res.push({ se: sess[i], err: e.message }); }
+  }
+  T.stuPlan = res.filter(x => x.r && x.r.parts.every(p => !p.blocked)).map(x => x.se.sessionId);
+  modal(`<h3>ตรวจกับ STUMIS แล้ว</h3>${res.map(x => `<div class="card" style="margin:6px 0"><b>${fmtD(x.se.date)} คาบ ${perTxt(x.se)}</b>
+    ${x.err ? `<div class="warn">${esc(x.err)}</div>` : x.r.parts.map(p => `<div style="margin-top:4px"><small class="mut">${esc(p.label)} · คาบ ${p.cab}</small><br>${stuPartTxt(p)}</div>`).join('')}</div>`).join('')}
+    <p class="wrap">${T.stuPlan.length ? `<button class="btn pri" data-act="stuGo">ยืนยันส่ง ${T.stuPlan.length} คาบ</button>` : ''}<button class="btn" data-act="mclose">${T.stuPlan.length ? 'ยกเลิก' : 'ปิด'}</button></p>`);
+}
+function vAtt(){
+  let h = `<div class="row"><h1>เช็คชื่อ</h1>${grpSel('gid', T.gid)}</div>`;
+  if (!grp(T.gid)) return h + NOGRP;
+  if (!T.att) return h + '<div class="card center"><button class="btn pri" data-act="attLoad">แสดงตาราง</button></div>';
+  const g = grp(T.gid), studs = stuOf(g), ss = T.att.sessions, by = {};
+  T.att.att.forEach(a => (by[a.studentId] = by[a.studentId] || {})[a.sessionId] = a);
+  h += `<div class="leg" style="margin-bottom:6px">${ST.map(s => `<span><span class="a st-${s}">${STL[s]}</span> ${s}</span>`).join('')}<span class="mut">· จาง = ไม่ได้เช็ค (นับขาด) · เกณฑ์ มส. ${MS()}%</span></div>`;
+  h += `<p class="wrap"><button class="btn sm" data-act="copyAtt">${ICO.copy} คัดลอกรายชื่อ</button><button class="btn sm" data-act="retro">+ เพิ่มคาบย้อนหลัง</button><button class="btn sm" data-act="stuImp">นำเข้าจาก STUMIS</button>${stuTodo(ss).length ? `<button class="btn sm" data-act="stuSync">ส่งเข้า STUMIS (${stuTodo(ss).length} คาบ)</button>` : ''}<small>แตะช่องเพื่อแก้ · แตะหัวคอลัมน์เพื่อเปิดคาบนั้น</small></p>`;
+  h += '<div class="tbl"><table><thead><tr><th>#</th><th class="nm">ชื่อ</th>';
+  ss.forEach(se => { for (let k = 1; k <= (+se.span === 2 ? 2 : 1); k++) h += `<th class="tap" data-act="live" data-id="${se.sessionId}">${fmtD(se.date)}${k === 1 ? stuMark(se) : ''}<br><small>ค.${+se.period ? +se.period + k - 1 : '-'}</small></th>`; });
+  h += '<th>มา%</th>' + ST.map(s => `<th title="${s}"><span class="a st-${s}">${STL[s]}</span></th>`).join('') + '</tr></thead><tbody>';
+  studs.forEach(s => { const am = by[s.studentId] || {}, sm = attSum(ss, am);
+    h += `<tr><td>${esc(s.no)}</td><td class="nm">${stuName(s, g)}</td>`;
+    ss.forEach(se => { const a = am[se.sessionId] || {}; for (let k = 1; k <= (+se.span === 2 ? 2 : 1); k++) {
+      const st = k === 1 ? (a.s1 || '') : (a.s2 || a.s1 || '');
+      h += `<td class="tap" data-act="cell" data-id="${se.sessionId}" data-stu="${esc(s.studentId)}" data-k="${k}">${st ? `<span class="a st-${st}">${STL[st]}</span>` : se.state === 'closed' ? '<span class="a st-ขาด" style="opacity:.5" title="ไม่ได้เช็ค = ขาด">ข</span>' : '·'}</td>`; } });
+    h += `<td class="${sm.pct != null && sm.pct < MS() ? 'warn' : ''}">${sm.pct == null ? '-' : sm.pct}</td>` + ST.map(x => `<td>${sm.c[x]}</td>`).join('') + '</tr>'; });
+  return h + '</tbody></table></div>';
+}
+async function attLoad(){ T.att = await tapi('tAttGrid', { groupId: T.gid }); draw(); }
+
+/* ----- คะแนน ----- */
+const scGet = (iid, sid) => T.sg.map[iid + '|' + sid];
+function tStat(it, x, today){
+  if (x && x.sub === 'ช้า') return 'l'; if (x && x.sub === 'ส่ง') return 's'; if (x && x.sub === 'รอ') return 'w';
+  if (x && x.score !== '' && x.score != null) return 'z';
+  return it.due && today > it.due ? 'm' : 'o';
+}
+function trackOf(g){
+  const today = T.boot.today, studs = stuOf(g), its = itemsOf(g.subjectId).filter(i => i.cat === 'pre' || i.cat === 'post'), owe = {}, all = {};
+  const tasks = its.map(i => { const t = { it: i, s: 0, l: 0, w: 0, m: 0, o: 0, z: 0, ug: 0, miss: [], st: {} };
+    studs.forEach(s => { const x = scGet(i.itemId, s.studentId), k = tStat(i, x, today); t[k]++; t.st[s.studentId] = k;
+      if ((k === 's' || k === 'l') && (!x || x.score === '' || x.score == null)) t.ug++;
+      if (k === 'm' || k === 'o') t.miss.push(s);
+      if (k === 'm') (owe[s.studentId] = owe[s.studentId] || { s, items: [] }).items.push(i.label);
+      if (k === 'm' || k === 'o') (all[s.studentId] = all[s.studentId] || { s, items: [] }).items.push(i.label + (k === 'm' ? '*' : '')); });
+    return t; });
+  const order = t => (t.m ? 0 : t.w ? 1 : t.ug ? 2 : t.o ? 3 : 4);
+  const sorted = T.tsort === 'urgent' ? tasks.slice().sort((a, b) => order(a) - order(b) || b.m - a.m || (a.it.due || '9').localeCompare(b.it.due || '9')) : tasks;
+  const dueT = tasks.filter(t => t.it.due && today > t.it.due), risk = {};
+  if (dueT.length) studs.forEach(s => { const sent = dueT.filter(t => ['s', 'l', 'w'].includes(t.st[s.studentId])).length, pct = Math.round(sent / dueT.length * 100);
+    if (pct < RP()) risk[s.studentId] = pct; });
+  return { studs, tasks, sorted, risk, dueN: dueT.length, owe: Object.values(owe).sort((a, b) => b.items.length - a.items.length || +a.s.no - +b.s.no), all: Object.values(all).sort((a, b) => +a.s.no - +b.s.no), today };
+}
+const KL = { m: 'ค้างส่ง (เลยกำหนด)', w: 'รอยืนยันการส่ง', ug: 'ส่งแล้ว รอตรวจ', ok: 'ไม่มีงานค้าง' };
+function vKList(h){
+  const g = grp(T.gid), R = trackOf(g), k = T.klist, rows = [];
+  R.tasks.forEach(t => R.studs.forEach(s => { const st = t.st[s.studentId], x = scGet(t.it.itemId, s.studentId) || {};
+    if (k === 'w' && st === 'w') rows.push({ s, t, x });
+    if (k === 'ug' && (st === 's' || st === 'l') && (x.score === '' || x.score == null)) rows.push({ s, t, x }); }));
+  rows.sort((a, b) => +a.s.no - +b.s.no || (a.t.it.ord - b.t.it.ord));
+  const fc = r => (T.sg.fmap[r.t.it.itemId + '|' + r.s.studentId] || []).length;
+  h += `<div class="row"><h2 style="margin:0">${KL[k]}</h2><button class="btn sm" data-act="sview" data-v="track">‹ กลับหน้าตามงาน</button></div>`;
+  const nm = s => `<button class="nmlink" data-act="stu" data-stu="${esc(s.studentId)}"><b>${esc(s.no)}.</b> ${esc(s.name)}</button>${nickOf(s)}`;
+  h += '<div class="card">';
+  if (k === 'm' && R.dueN) h += `<p class="mut">เกณฑ์ ร.: ส่งงานที่ถึงกำหนดแล้วต่ำกว่า ${RP()}% (มี ${R.dueN} งานที่ถึงกำหนด) ตั้งได้ที่ เพิ่มเติม › ตั้งค่า</p>`;
+  if (k === 'm') h += R.owe.length ? `<p class="wrap"><button class="btn sm" data-act="copyOwe">${ICO.copy} คัดลอกส่ง LINE</button><small>${R.owe.length} คน · ${R.owe.reduce((a, o) => a + o.items.length, 0)} ชิ้น</small></p>` + R.owe.slice().sort((a, b) => +a.s.no - +b.s.no).map(o => `<div class="stu" style="flex-wrap:wrap"><span class="nm">${nm(o.s)}${R.risk[o.s.studentId] != null ? ` <span class="badge" style="color:var(--abs);border-color:var(--abs)">เสี่ยง ร. ${R.risk[o.s.studentId]}%</span>` : ''}</span><span class="a st-ขาด">ค้าง ${o.items.length}</span><div class="wrap" style="width:100%;gap:4px">${o.items.map(x => `<span class="chipl k-m">${esc(x)}</span>`).join('')}</div></div>`).join('') : '<p class="mut">ไม่มีงานที่เลยกำหนดแล้วยังไม่ส่ง</p>';
+  if (k === 'w') h += rows.length ? `<p class="wrap"><button class="btn sm pri" data-act="pendAll">ยืนยันทั้งหมด ${rows.length} รายการ</button><small>ส่งหลังกำหนดจะบันทึกเป็น "ช้า" ให้อัตโนมัติ</small></p>` + rows.map(r => { const late = r.t.it.due && r.x.subAt && r.x.subAt > r.t.it.due;
+      return `<div class="stu" style="flex-wrap:wrap"><span class="nm">${nm(r.s)}<br><small>${esc(r.t.it.label)}${r.x.subAt ? ' · กดส่ง ' + thShort(r.x.subAt) : ''}${late ? ' <span class="warn">(หลังกำหนด)</span>' : ''}${fc(r) ? ' · 📎' + fc(r) : ''}</small></span><button class="btn sm" data-act="sc1" data-id="${r.t.it.itemId}" data-stu="${esc(r.s.studentId)}">ดู</button><button class="btn sm pri" data-act="kOk" data-id="${r.t.it.itemId}" data-stu="${esc(r.s.studentId)}">ยืนยัน</button></div>`; }).join('') : '<p class="mut">ไม่มีงานรอยืนยัน</p>';
+  if (k === 'ug') h += rows.length ? rows.map(r => `<div class="stu" style="flex-wrap:wrap"><span class="nm">${nm(r.s)}<br><small>${esc(r.t.it.label)} · เต็ม ${esc(r.t.it.max)}${r.x.sub === 'ช้า' ? ' · <span class="warn">ส่งช้า</span>' : ''}${fc(r) ? ' · 📎' + fc(r) : ''}</small></span><button class="btn sm pri" data-act="sc1" data-id="${r.t.it.itemId}" data-stu="${esc(r.s.studentId)}">ให้คะแนน</button></div>`).join('') : '<p class="mut">ตรวจครบแล้ว</p>';
+  if (k === 'ok') { const ok = R.studs.filter(s => !R.owe.some(o => o.s.studentId === s.studentId));
+    h += ok.length ? ok.map(s => { const sent = R.tasks.filter(t => ['s', 'l', 'w'].includes(t.st[s.studentId])).length;
+      return `<div class="stu"><span class="nm">${nm(s)}</span><small>ส่งแล้ว ${sent}/${R.tasks.length}</small></div>`; }).join('') : '<p class="mut">ทุกคนมีงานค้าง</p>'; }
+  return h + '</div>';
+}
+function vTrack(h){
+  if (T.sview === 'list') return vKList(h);
+  const g = grp(T.gid), sb = subj(g.subjectId), R = trackOf(g), N = R.studs.length, sum = k => R.tasks.reduce((a, t) => a + t[k], 0);
+  const full = R.studs.filter(s => !R.owe.some(o => o.s.studentId === s.studentId)).length;
+  h += `<div class="kpis">
+    <button class="kpi" data-act="klist" data-k="m"><small>ค้างส่ง (เลยกำหนด)</small><b style="color:var(--abs)">${sum('m')}</b><small>${R.owe.length} คน · ดูรายชื่อ ›</small></button>
+    <button class="kpi" data-act="klist" data-k="w"><small>รอยืนยันการส่ง</small><b style="color:var(--act)">${sum('w')}</b><small>ดูรายชื่อ ›</small></button>
+    <button class="kpi" data-act="klist" data-k="ug"><small>ส่งแล้ว รอตรวจ</small><b style="color:var(--late)">${sum('ug')}</b><small>ดูรายชื่อ ›</small></button>
+    <button class="kpi" data-act="klist" data-k="ok"><small>ไม่มีงานค้าง</small><b style="color:var(--ok)">${full}<small style="display:inline"> / ${N}</small></b><small>ดูรายชื่อ ›</small></button></div>`;
+  h += '<div class="cols"><div>';
+  h += `<section class="card"><div class="row"><h2>ติดตามงานรายชิ้น</h2><span class="wrap"><span class="seg" role="group" aria-label="เรียงการ์ด"><button class="${T.tsort !== 'urgent' ? 'on' : ''}" data-act="tsort" data-v="ord">ตามลำดับงาน</button><button class="${T.tsort === 'urgent' ? 'on' : ''}" data-act="tsort" data-v="urgent">ด่วนก่อน</button></span><button class="btn sm" data-act="ordOpen">จัดลำดับงาน</button><button class="btn sm pri" data-act="itemNew">+ เพิ่มงาน</button></span></div>`;
+  h += R.sorted.length ? R.sorted.map(t => { const i = t.it, du = dueTxt(i.due, R.today, !t.m && !t.o), sent = t.s + t.l;
+    return `<div class="task"><button class="tlink" data-act="item" data-id="${i.itemId}">${i.hide === '1' ? '🔒 ' : ''}${esc(i.label)}</button>
+      <div class="row"><span class="duep ${du.c}">${du.t}</span><small>${CATN[i.cat]} · ${esc(i.max)} คะแนน</small></div>${sbar(t, N)}${leg(t)}
+      <div class="row" style="margin-top:4px"><small>ส่งแล้ว ${sent}/${N} · ตรวจแล้ว ${sent - t.ug}/${sent}</small><span class="wrap">${t.miss.length ? `<button class="btn sm" data-act="copyMiss" data-id="${i.itemId}">${ICO.copy} รายชื่อยังไม่ส่ง ${t.miss.length}</button>` : ''}<button class="btn sm ${t.w || t.ug ? 'pri' : ''}" data-act="item" data-id="${i.itemId}">${t.w ? 'ยืนยัน ' + t.w : t.ug ? 'ตรวจ ' + t.ug : 'เปิด'}</button></span></div></div>`; }).join('')
+    : '<p class="mut">ยังไม่มีงานเก็บคะแนน (ก่อน/หลังกลางภาค)</p>';
+  h += '</section>';
+  if (R.tasks.length) {
+    h += `<section class="card"><div class="row"><h2>ภาพรวมรายคน</h2><small>แตะช่องเพื่อแก้</small></div><div class="leg" style="margin-bottom:6px">${KS.map(k => `<span><i class="k-${k[0]}"></i>${k[1]}</span>`).join('')}</div>
+      <div class="tbl" style="max-height:60vh"><table class="hm"><thead><tr><th>#</th><th class="nm">ชื่อ</th>${R.tasks.map(t => `<th class="tap hmh" data-act="item" data-id="${t.it.itemId}">${esc(t.it.label)}</th>`).join('')}</tr></thead><tbody>`;
+    h += R.studs.map(s => `<tr><td>${esc(s.no)}</td><td class="nm">${stuName(s, g)}</td>${R.tasks.map(t => { const k = t.st[s.studentId], x = scGet(t.it.itemId, s.studentId) || {};
+      return `<td class="tap" data-act="sc1" data-id="${t.it.itemId}" data-stu="${esc(s.studentId)}"><span class="c k-${k}">${x.score !== '' && x.score != null && k !== 'w' ? esc(x.score) : { s: '✓', l: 'ช้า', w: 'รอ', m: 'ค้าง', z: '0', o: '·' }[k]}</span></td>`; }).join('')}</tr>`).join('');
+    h += '</tbody></table></div></section>';
+  }
+  h += '</div><div>';
+  const rN = Object.keys(R.risk).length;
+  h += `<section class="card"><div class="row"><h2>ค้างงาน ${R.owe.length} คน${rN ? ` <small class="warn">เสี่ยง ร. ${rN}</small>` : ''}</h2><span class="wrap">${R.owe.length ? `<button class="btn sm" data-act="copyOwe">${ICO.copy} คัดลอกส่ง LINE</button>` : ''}${R.all.length ? `<button class="btn sm" data-act="copyOweAll">${ICO.copy} งานค้างทั้งหมด (${R.all.length} คน)</button>` : ''}</span></div>`;
+  h += R.owe.length ? R.owe.map(o => `<div class="stu"><span class="a ${o.items.length > 1 ? 'st-ขาด' : 'st-สาย'}">${o.items.length}</span><span class="nm"><button class="nmlink" data-act="stu" data-stu="${esc(o.s.studentId)}">${esc(o.s.no)}. ${esc(o.s.name)}</button>${nickOf(o.s)}${R.risk[o.s.studentId] != null ? ` <span class="badge" style="color:var(--abs);border-color:var(--abs)">เสี่ยง ร. ส่ง ${R.risk[o.s.studentId]}%</span>` : ''}<br><small>${esc(o.items.join(', '))}</small></span></div>`).join('') : '<p class="mut">ไม่มีงานที่เลยกำหนดแล้วยังไม่ส่ง</p>';
+  const all = itemsOf(sb.subjectId), gd = {}; [4,3.5,3,2.5,2,1.5,1,0].forEach(x => gd[x] = 0);
+  const W = { pre: +sb.wPre || 0, mid: +sb.wMid || 0, post: +sb.wPost || 0, final: +sb.wFinal || 0 };
+  const done = CATS.filter(c => all.some(i => i.cat === c && R.studs.some(s => { const x = scGet(i.itemId, s.studentId); return x && x.score !== '' && x.score != null; })));
+  const sumW = done.reduce((a, c) => a + W[c], 0);
+  R.studs.forEach(s => { const net = calcNet(sb, all, iid => scGet(iid, s.studentId)); const got = done.reduce((a, c) => a + net.cats[c].net, 0);
+    gd[grade(sumW ? got / sumW * 100 : 0, T.boot.cfg)]++; });
+  const mx = Math.max(1, ...Object.values(gd));
+  h += `</section><section class="card"><h2>เกรดคาดการณ์ตอนนี้</h2><small class="mut">${sumW ? 'เทียบสัดส่วนจากหมวดที่มีคะแนนแล้ว: ' + done.map(c => CATN[c]).join(', ') : 'ยังไม่มีคะแนน'}</small>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:110px;margin-top:8px">${[0,1,1.5,2,2.5,3,3.5,4].map(x => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%"><small>${gd[x]}</small><div style="width:100%;height:${(gd[x] / mx * 80).toFixed(0)}%;min-height:2px;border-radius:5px 5px 2px 2px;background:${x === 0 ? 'var(--abs)' : 'var(--pri)'}"></div></div>`).join('')}</div>
+    <div style="display:flex;gap:6px">${[0,1,1.5,2,2.5,3,3.5,4].map(x => `<small style="flex:1;text-align:center" class="mut">${x}</small>`).join('')}</div></section>`;
+  return h + '</div></div>';
+}
+function vScore(){
+  let h = `<div class="row" style="flex-wrap:wrap;margin-bottom:10px"><h1 style="margin-bottom:0">${T.sview === 'trait' ? 'คุณลักษณะ &amp; อ่านคิดเขียน' : 'คะแนน' + (T.sview !== 'table' ? ' &amp; ตามงาน' : '')}</h1><span class="wrap">${grpSel('gid', T.gid)}<span class="seg" role="group" aria-label="มุมมอง"><button class="${!['table', 'trait'].includes(T.sview) ? 'on' : ''}" data-act="sview" data-v="track">ตามงาน</button><button class="${T.sview === 'table' ? 'on' : ''}" data-act="sview" data-v="table">ตารางคะแนน</button><button class="${T.sview === 'trait' ? 'on' : ''}" data-act="sview" data-v="trait">คุณลักษณะ</button></span></span></div>`;
+  if (!grp(T.gid)) return h + NOGRP;
+  if (!T.sg) return h + '<div class="card center"><button class="btn pri" data-act="scLoad">แสดงตาราง</button></div>';
+  if (T.sview === 'trait') return vTrait(h);
+  if (T.sview !== 'table') return vTrack(h);
+  const g = grp(T.gid), sb = subj(g.subjectId), its = itemsOf(sb.subjectId), studs = stuOf(g);
+  h += `<p class="wrap"><button class="btn sm pri" data-act="itemNew">+ เพิ่มช่องคะแนน</button><button class="btn sm" data-act="expStumis">คัดลอกสรุป (STUMIS)</button><button class="btn sm" data-act="sgsOpen">กรอกลง SGS</button><small>${esc(sb.name)} · สัดส่วน ${sb.wPre}:${sb.wMid}:${sb.wPost}:${sb.wFinal} (${WM(sb)}) · แตะหัวคอลัมน์ = เช็คงาน/กรอกทั้งห้อง · แตะช่อง = แก้รายคน</small></p>`;
+  const nh = its.filter(i => i.hide === '1').length;
+  h += `<div class="card row"><span>นักเรียนเห็นคะแนน: <b>${nh ? (nh === its.length ? 'ซ่อนทุกช่อง' : 'ซ่อน ' + nh + ' ช่อง (🔒)') : 'ทุกช่อง'}</b><br><small>สถานะส่งงานนักเรียนเห็นเสมอ</small></span><span class="wrap"><button class="btn sm" data-act="hideAll" data-h="0">แสดงทั้งหมด</button><button class="btn sm" data-act="hideAll" data-h="1">ซ่อนทั้งหมด</button></span></div>`;
+  const np = pendList().length;
+  if (np) h += `<div class="card row" style="border-color:var(--late)"><b>นักเรียนกดส่งงาน รอยืนยัน ${np} รายการ</b><button class="btn sm pri" data-act="pendAll">ยืนยันทั้งหมด</button></div>`;
+  h += '<div class="tbl"><table><thead><tr><th>#</th><th class="nm">ชื่อ</th>';
+  its.forEach(i => h += `<th class="tap c-${i.cat}" data-act="item" data-id="${i.itemId}">${i.hide === '1' ? '🔒 ' : ''}${esc(i.label)}<br><small>${CATS_S[i.cat]} · ${esc(i.max)}</small></th>`);
+  CATS.forEach(c => h += `<th class="c-${c}">${CATS_S[c]}<br><small>${sb['w' + c[0].toUpperCase() + c.slice(1)]}</small></th>`);
+  h += '<th>รวม</th><th>เกรด</th><th>มา%</th></tr></thead><tbody>';
+  studs.forEach(s => { const net = calcNet(sb, its, iid => scGet(iid, s.studentId)), pct = T.sg.attPct[s.studentId];
+    h += `<tr><td>${esc(s.no)}</td><td class="nm">${stuName(s, g)}</td>`;
+    its.forEach(i => { const x = scGet(i.itemId, s.studentId) || {}; h += `<td class="tap" data-act="sc1" data-id="${i.itemId}" data-stu="${esc(s.studentId)}">${(T.sg.fmap[i.itemId + '|' + s.studentId] || []).length ? '<small>📎</small>' : ''}${x.score !== '' && x.score != null ? esc(x.score) : x.sub === 'รอ' ? '<span class="pend">รอ</span>' : (x.sub ? '✓' + (x.sub === 'ช้า' ? '<small>ช้า</small>' : '') : '<span class="mut">·</span>')}</td>`; });
+    CATS.forEach(c => h += `<td class="c-${c}">${net.cats[c].net}</td>`);
+    h += `<td><b>${net.total}</b></td><td>${grade(net.total, T.boot.cfg)}</td><td class="${pct != null && pct < MS() ? 'warn' : ''}">${pct == null ? '-' : pct}</td></tr>`; });
+  return h + '</tbody></table></div>';
+}
+function SGSFILL(){
+  var W = window, D = document;
+  if (W.__gbSgs) { W.__gbSgs.box.style.display = 'block'; return; }
+  var ME = { data: null, plan: null };
+  var box = D.createElement('div');
+  box.id = 'gbSgsBox';
+  box.style.cssText = 'position:fixed;top:12px;right:12px;width:380px;max-height:88vh;overflow:auto;z-index:2147483647;background:#fff;color:#222;border:2px solid #6d4aff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.25);font:14px/1.5 Tahoma,sans-serif;padding:12px';
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:16px">เติมจากระบบครู</b><button type="button" data-x="close" style="border:0;background:none;font-size:20px;cursor:pointer">×</button></div>'
+    + '<div data-x="step1"><p style="margin:6px 0">1. ในระบบครู กด <b>คัดลอกข้อมูลสำหรับ SGS</b><br>2. คลิกช่องด้านล่างแล้ววาง (Ctrl+V)</p>'
+    + '<textarea data-x="paste" rows="3" style="width:100%;box-sizing:border-box;border:1px solid #bbb;border-radius:8px;padding:6px" placeholder="วางข้อมูลที่นี่"></textarea></div>'
+    + '<div data-x="out"></div>';
+  D.body.appendChild(box);
+  W.__gbSgs = ME; ME.box = box;
+  var $ = function (k) { return box.querySelector('[data-x="' + k + '"]'); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var norm = function (s) { return String(s || '').replace(/\s+/g, '').replace(/^(เด็กชาย|เด็กหญิง|ด\.ช\.|ด\.ญ\.|นางสาว|น\.ส\.|นาย|นาง)/, ''); };
+  var txt = function (el) { return String(el.textContent || '').replace(/\s+/g, ' ').trim(); };
+  var editable = function (el) {
+    if (el.disabled || el.readOnly) return false;
+    if (el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') return true;
+    var t = (el.getAttribute('type') || 'text').toLowerCase();
+    return t === 'text' || t === 'number' || t === 'tel' || t === '';
+  };
+  function kindOf() {
+    var p = location.pathname;
+    if (/TranscriptsQ/i.test(p)) return 'q';
+    if (/TranscriptsL/i.test(p)) return 'l';
+    if (/Attend/i.test(p)) return 'att';
+    return 'score';
+  }
+  var KIND = { score: 'ผลการเรียน', q: 'คุณลักษณะอันพึงประสงค์', l: 'การอ่าน คิดวิเคราะห์ และเขียน', att: 'เวลาเรียน/การขาดเรียน' };
+  // ตารางที่มีช่องกรอกมากที่สุด (ไม่นับตารางซ้อน)
+  function findTable() {
+    var best = null, bestN = 0;
+    [].forEach.call(D.querySelectorAll('table'), function (t) {
+      if (box.contains(t)) return;
+      var n = 0;
+      [].forEach.call(t.rows, function (r) {
+        var ok = [].some.call(r.querySelectorAll('input,select,textarea'), function (el) { return el.closest('table') === t && editable(el); });
+        if (ok) n++;
+      });
+      if (n > bestN) { bestN = n; best = t; }
+    });
+    return best;
+  }
+  // ตำแหน่งคอลัมน์จริงของทุกเซลล์ (รองรับ colspan/rowspan)
+  function grid(t) {
+    var occ = [], pos = new Map();
+    [].forEach.call(t.rows, function (r, ri) {
+      occ[ri] = occ[ri] || [];
+      var c = 0;
+      [].forEach.call(r.cells, function (cell) {
+        while (occ[ri][c]) c++;
+        pos.set(cell, c);
+        var cs = Math.max(1, cell.colSpan || 1), rs = Math.max(1, cell.rowSpan || 1);
+        for (var i = 0; i < rs; i++) { occ[ri + i] = occ[ri + i] || []; for (var j = 0; j < cs; j++) occ[ri + i][c + j] = cell; }
+        c += cs;
+      });
+    });
+    return { occ: occ, pos: pos };
+  }
+  function mapKey(kind, h, d) {
+    var s = String(h || '').replace(/\s+/g, '');
+    if (kind === 'score') {
+      if (/ก่อนกลาง|ก่อนสอบกลาง/.test(s)) return 'pre';
+      if (/หลังกลาง|หลังสอบกลาง/.test(s)) return 'post';
+      if (/ปลาย/.test(s)) return 'final';
+      if (/กลาง/.test(s)) return 'mid';
+      return '';
+    }
+    if (kind === 'att') {
+      if (/ขาด/.test(s)) return 'abs';
+      if (/ลา/.test(s)) return 'leave';
+      if (/สาย/.test(s)) return 'late';
+      if (/ทั้งหมด|เต็ม/.test(s)) return 'total';
+      if (/มา|เข้าเรียน/.test(s)) return 'present';
+      return '';
+    }
+    var list = (kind === 'q' ? d.qList : d.lList) || [];
+    for (var i = 0; i < list.length; i++) { var k = norm(list[i]).slice(0, 12); if (k && s.indexOf(k) >= 0) return kind + i; }
+    var m = /(?:^|ข้อ|ตัวชี้วัด|ที่)(\d{1,2})(?:\D|$)/.exec(s) || /^(\d{1,2})$/.exec(s);
+    if (m && +m[1] >= 1 && +m[1] <= list.length) return kind + (+m[1] - 1);
+    if (/รวม|สรุป|ผล|ระดับ|เฉลี่ย/.test(s)) return kind + 'L';
+    return '';
+  }
+  function valOf(row, key) {
+    if (key === 'pre' || key === 'mid' || key === 'post' || key === 'final') return row.v ? row.v[key] : '';
+    if (key === 'qL') return row.qL; if (key === 'lL') return row.lL;
+    if (/^q\d+$/.test(key)) return row.q ? row.q[+key.slice(1)] : '';
+    if (/^l\d+$/.test(key)) return row.l ? row.l[+key.slice(1)] : '';
+    return row.att ? row.att[key] : '';
+  }
+  var KEYN = { pre: 'ก่อนกลางภาค', mid: 'กลางภาค', post: 'หลังกลางภาค', final: 'ปลายภาค', qL: 'ระดับคุณลักษณะ', lL: 'ระดับอ่านคิดเขียน', abs: 'ขาด (คาบ)', leave: 'ลา', late: 'สาย', present: 'มาเรียน', total: 'คาบทั้งหมด' };
+  var keyName = function (k) { return KEYN[k] || (/^q\d+$/.test(k) ? 'คุณลักษณะ ข้อ ' + (+k.slice(1) + 1) : /^l\d+$/.test(k) ? 'อ่านคิดเขียน ข้อ ' + (+k.slice(1) + 1) : k); };
+  function analyze(d) {
+    var kind = kindOf(), t = findTable();
+    if (!t) return { err: 'ไม่พบตารางที่มีช่องกรอกในหน้านี้ เปิดหน้า "บันทึก…" ของห้องที่จะกรอกก่อน' };
+    var G = grid(t), rows = [].slice.call(t.rows), first = rows.findIndex(function (r) { return [].some.call(r.querySelectorAll('input,select,textarea'), function (el) { return el.closest('table') === t && editable(el); }); });
+    var head = {};
+    rows.slice(0, first).forEach(function (r, ri) {
+      (G.occ[ri] || []).forEach(function (cell, c) { var x = txt(cell); head[c] = head[c] || []; if (x && head[c].indexOf(x) < 0) head[c].push(x); });
+    });
+    var byId = {}, byName = {}, dup = {};
+    d.rows.forEach(function (r) { byId[String(r.id)] = r; var k = norm(r.name); if (byName[k]) dup[k] = 1; byName[k] = r; });
+    Object.keys(dup).forEach(function (k) { delete byName[k]; });
+    var plan = { kind: kind, fields: [], heads: {}, seen: {}, sgsOnly: [], rows: 0 };
+    rows.slice(first).forEach(function (r) {
+      var ctl = [].filter.call(r.querySelectorAll('input,select,textarea'), function (el) { return el.closest('table') === t && editable(el); });
+      if (!ctl.length) return;
+      plan.rows++;
+      var hit = null;
+      [].some.call(r.cells, function (cell) {
+        var x = txt(cell), m = x.match(/\d{3,10}/g) || [];
+        for (var i = 0; i < m.length; i++) if (byId[m[i]]) { hit = byId[m[i]]; return true; }
+        if (x && byName[norm(x)]) { hit = byName[norm(x)]; return true; }
+        return false;
+      });
+      if (!hit) { plan.sgsOnly.push(txt(r).slice(0, 40)); return; }
+      plan.seen[hit.id] = 1;
+      ctl.forEach(function (el) {
+        var cell = el.closest('td,th'), c = G.pos.get(cell), hp = head[c] || [], h = hp.join(' '), key = '';
+        for (var i = hp.length - 1; i >= 0 && !key; i--) key = mapKey(kind, hp[i], d);
+        if (!key) key = mapKey(kind, h, d);
+        plan.heads[h] = plan.heads[h] || { key: key, n: 0 };
+        if (!key) return;
+        var v = valOf(hit, key);
+        if (v === '' || v == null) return;
+        plan.heads[h].n++;
+        plan.fields.push({ el: el, v: String(v), key: key });
+      });
+    });
+    plan.ourOnly = d.rows.filter(function (r) { return !plan.seen[r.id]; }).map(function (r) { return r.no + '. ' + r.name; });
+    return plan;
+  }
+  function setVal(el, v) {
+    if (el.tagName === 'SELECT') {
+      var o = [].filter.call(el.options, function (o) { return o.value === v || txt(o) === v; })[0];
+      if (!o) return false;
+      el.value = o.value;
+    } else el.value = v;
+    ['input', 'change', 'keyup', 'blur'].forEach(function (ev) { el.dispatchEvent(new Event(ev, { bubbles: true })); });
+    el.style.background = '#fff3a8';
+    return true;
+  }
+  function show() {
+    var d = ME.data, p = ME.plan, o = $('out');
+    if (p.err) { o.innerHTML = '<p style="color:#c00">' + esc(p.err) + '</p>'; return; }
+    var hs = Object.keys(p.heads);
+    o.innerHTML = '<p style="margin:6px 0"><b>' + esc(d.label) + '</b> → หน้า <b>' + KIND[p.kind] + '</b><br>'
+      + 'จับคู่นักเรียน ' + Object.keys(p.seen).length + ' / ' + p.rows + ' แถว · จะกรอก ' + p.fields.length + ' ช่อง</p>'
+      + (p.kind === 'score' && d.w ? '<p style="margin:4px 0;color:#555">สัดส่วนในระบบครู ก่อน ' + d.w.join(' : ') + ' (ตรวจว่าตรงกับคะแนนเต็มใน SGS)</p>' : '')
+      + '<div style="border:1px solid #ddd;border-radius:8px;padding:6px;margin:6px 0">' + (hs.length ? hs.map(function (h) { var x = p.heads[h];
+        return '<div>' + (x.key ? '✅ ' : '⚪ ') + esc(h || '(ไม่มีหัวคอลัมน์)') + (x.key ? ' → ' + esc(keyName(x.key)) + ' (' + x.n + ')' : ' <span style="color:#888">ไม่กรอก</span>') + '</div>'; }).join('') : 'ไม่พบช่องกรอกของนักเรียนที่ตรงกัน') + '</div>'
+      + (p.ourOnly.length ? '<p style="color:#b26b00;margin:4px 0">ไม่พบใน SGS ' + p.ourOnly.length + ' คน: ' + esc(p.ourOnly.slice(0, 15).join(', ')) + '</p>' : '')
+      + (p.sgsOnly.length ? '<p style="color:#b26b00;margin:4px 0">แถวใน SGS ที่ไม่มีข้อมูล ' + p.sgsOnly.length + ' แถว (ไม่แตะ)</p>' : '')
+      + '<p style="margin:8px 0;display:flex;gap:6px;flex-wrap:wrap">' + (p.fields.length ? '<button type="button" data-x="fill" style="background:#6d4aff;color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer">กรอก ' + p.fields.length + ' ช่อง</button>' : '')
+      + '<button type="button" data-x="again" style="border:1px solid #bbb;background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer">ตรวจใหม่</button></p>'
+      + '<p style="color:#555;margin:4px 0">ระบบจะไม่กดบันทึกให้ ตรวจช่องสีเหลืองแล้วกดปุ่มบันทึกของ SGS เอง</p>';
+  }
+  function load(s) {
+    var m = /GBSGS1:(\{[\s\S]*\})/.exec(s || '');
+    if (!m) { $('out').innerHTML = '<p style="color:#c00">ข้อมูลไม่ถูกต้อง คัดลอกจากปุ่ม "คัดลอกข้อมูลสำหรับ SGS" อีกครั้ง</p>'; return; }
+    try { ME.data = JSON.parse(m[1]); } catch (e) { $('out').innerHTML = '<p style="color:#c00">อ่านข้อมูลไม่ได้</p>'; return; }
+    ME.plan = analyze(ME.data); $('step1').style.display = 'none'; show();
+  }
+  ME.load = load;
+  $('paste').addEventListener('paste', function (e) { var s = (e.clipboardData || W.clipboardData).getData('text'); e.preventDefault(); load(s); });
+  $('paste').addEventListener('input', function () { if (/GBSGS1:/.test(this.value)) load(this.value); });
+  box.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-x]'); if (!b) return;
+    var x = b.getAttribute('data-x');
+    if (x === 'close') box.style.display = 'none';
+    if (x === 'again') { ME.plan = analyze(ME.data); show(); }
+    if (x === 'fill') {
+      var n = 0, bad = 0;
+      ME.plan.fields.forEach(function (f) { if (setVal(f.el, f.v)) n++; else bad++; });
+      $('out').insertAdjacentHTML('afterbegin', '<p style="background:#eaffea;border-radius:8px;padding:6px;margin:6px 0">กรอกแล้ว ' + n + ' ช่อง' + (bad ? ' · ไม่มีตัวเลือกที่ตรง ' + bad + ' ช่อง' : '') + '<br><b>ตรวจแล้วกดปุ่มบันทึกของ SGS</b></p>');
+      b.remove();
+    }
+  });
+  setTimeout(function () { $('paste').focus(); }, 50);
+}
+
+const SGS_BM = () => 'javascript:' + encodeURIComponent('(' + SGSFILL.toString() + ')()');
+async function sgsData(dp){
+  const g = grp(T.gid), sb = subj(g.subjectId), its = itemsOf(sb.subjectId), f = 10 ** dp, r = x => Math.round(x * f) / f;
+  if (!T.sg) await scLoad(); if (!T.tg || T.tg.gid !== T.gid) await trLoad();
+  const ag = await tapi('tAttGrid', { groupId: g.groupId }), by = {};
+  ag.att.forEach(a => (by[a.studentId] = by[a.studentId] || {})[a.sessionId] = a);
+  const ss = ag.sessions.filter(se => se.state === 'closed');
+  const rows = stuOf(g).map(s => { const n = calcNet(sb, its, iid => scGet(iid, s.studentId)), cq = trVals(s.studentId, 'char', true), cl = trVals(s.studentId, 'rtw', true),
+    lq = trLevel(cq), ll = trLevel(cl), a = attSum(ss, by[s.studentId] || {}), v = {};
+    CATS.forEach(c => { if (n.cats[c].max > 0) v[c] = r(n.cats[c].net).toFixed(dp); });
+    return { id: s.studentId, no: s.no, name: s.name, v, q: cq, qL: lq ? lq.level : '', l: cl, lL: ll ? ll.level : '',
+      att: { abs: a.c['ขาด'], leave: a.c['ลา'], late: a.c['สาย'], present: a.c['มา'] + a.c['สาย'] + a.c['กิจกรรม'], total: a.total } }; });
+  return { v: 1, label: `${sb.code || ''} ${sb.name} ${g.label}`.trim(), w: [sb.wPre, sb.wMid, sb.wPost, sb.wFinal], qList: T.tg.lists.char, lList: T.tg.lists.rtw, rows };
+}
+function vTrait(h){
+  if (!T.tg || T.tg.gid !== T.gid) return h + '<div class="card center"><button class="btn pri" data-act="trLoad">โหลดคะแนนคุณลักษณะ</button></div>';
+  const g = grp(T.gid), studs = stuOf(g), k = T.tkind || 'char', list = T.tg.lists[k], nd = Object.keys(T.tdraft).length;
+  h += `<p class="wrap"><span class="seg" role="group" aria-label="ประเภท"><button class="${k === 'char' ? 'on' : ''}" data-act="tkind" data-v="char">คุณลักษณะฯ (${T.tg.lists.char.length})</button><button class="${k === 'rtw' ? 'on' : ''}" data-act="tkind" data-v="rtw">อ่าน คิด เขียน (${T.tg.lists.rtw.length})</button></span>
+    <button class="btn sm" data-act="trFill" data-v="3">ช่องว่างทั้งหมด = 3</button><button class="btn sm" data-act="trFill" data-v="2">ช่องว่างทั้งหมด = 2</button>
+    <button class="btn sm pri" id="trSaveBtn" data-act="trSave" ${nd ? '' : 'disabled'}>บันทึก${nd ? ' (' + nd + ' ช่อง)' : ''}</button><button class="btn sm" data-act="expStumis">คัดลอกสรุป (STUMIS)</button></p>`;
+  h += `<details class="card"><summary><b>${TKN[k]}</b> <small class="mut">· ดูชื่อตัวชี้วัด ${list.length} ข้อ</small></summary><ol style="margin:6px 0 0;padding-left:22px">${list.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+    <p class="mut" style="margin:6px 0 0">ให้คะแนน 0–3 ต่อข้อ · ระดับ = ค่าเฉลี่ยของข้อที่ประเมินแล้ว: ≥2.5 ดีเยี่ยม (3) · ≥1.5 ดี (2) · ≥1 ผ่าน (1) · ต่ำกว่า 1 ไม่ผ่าน (0)</p></details>`;
+  h += '<div class="tbl"><table><thead><tr><th>#</th><th class="nm">ชื่อ</th>' + list.map((x, i) => `<th title="${esc(x)}">ข้อ ${i + 1}</th>`).join('') + '<th>เฉลี่ย</th><th>ระดับ</th></tr></thead><tbody>';
+  studs.forEach(s => { const vals = trVals(s.studentId, k), lv = trLevel(vals);
+    h += `<tr><td>${esc(s.no)}</td><td class="nm">${stuName(s, g)}</td>` + vals.map((v, i) => { const key = k + '|' + s.studentId + '|' + i;
+      return `<td><select class="trsel${key in T.tdraft ? ' chg' : ''}" data-tr="${esc(key)}" aria-label="ข้อ ${i + 1}"><option value=""${v === '' ? ' selected' : ''}>–</option>${[3, 2, 1, 0].map(x => `<option${String(v) === String(x) ? ' selected' : ''}>${x}</option>`).join('')}</select></td>`; }).join('')
+      + `<td class="tr-avg">${lv ? lv.avg : '-'}</td><td class="tr-lv">${lv ? lv.level + ' ' + TLV[lv.level] : '-'}</td></tr>`; });
+  return h + '</tbody></table></div><p class="mut">เปลี่ยนแล้วกดบันทึก (ช่องที่แก้มีกรอบสี) · ระดับแสดงในหน้านักเรียนรายคน และในหน้าคะแนนของนักเรียน</p>';
+}
+async function trLoad(){
+  const d = await tapi('tTraitGrid', { groupId: T.gid }), map = {};
+  d.rows.forEach(r => map[r.kind + '|' + r.studentId + '|' + r.idx] = String(r.val));
+  T.tg = { gid: T.gid, lists: d.lists, map }; T.tdraft = {};
+}
+function trChange(el){
+  const key = el.dataset.tr, orig = T.tg.map[key] != null ? T.tg.map[key] : '';
+  if (el.value === String(orig)) delete T.tdraft[key]; else T.tdraft[key] = el.value;
+  el.classList.toggle('chg', key in T.tdraft);
+  const k = key.split('|')[0], sid = key.slice(k.length + 1, key.lastIndexOf('|')), lv = trLevel(trVals(sid, k)), tr = el.closest('tr');
+  if (tr) { tr.querySelector('.tr-avg').textContent = lv ? lv.avg : '-'; tr.querySelector('.tr-lv').textContent = lv ? lv.level + ' ' + TLV[lv.level] : '-'; }
+  const nd = Object.keys(T.tdraft).length, b = document.getElementById('trSaveBtn');
+  if (b) { b.disabled = !nd; b.textContent = 'บันทึก' + (nd ? ' (' + nd + ' ช่อง)' : ''); }
+}
+function pendList(){
+  const g = grp(T.gid), out = []; if (!g || !T.sg) return out;
+  const its = itemsOf(g.subjectId);
+  stuOf(g).forEach(s => its.forEach(i => { const x = scGet(i.itemId, s.studentId); if (x && x.sub === 'รอ') out.push({ itemId: i.itemId, studentId: s.studentId }); }));
+  return out;
+}
+async function scLoad(){
+  const d = await tapi('tScoreGrid', { groupId: T.gid }); const map = {};
+  d.scores.forEach(x => map[x.itemId + '|' + x.studentId] = x); const fmap = {}; (d.files || []).forEach(f => (fmap[f.itemId + '|' + f.studentId] = fmap[f.itemId + '|' + f.studentId] || []).push(f.fileId));
+  T.sg = { map, attPct: d.attPct, fmap }; if (T.sview === 'trait' && (!T.tg || T.tg.gid !== T.gid)) await trLoad(); draw();
+}
+function vItem(){
+  const it = T.boot.items.find(i => i.itemId === T.item), g = grp(T.gid), studs = stuOf(g);
+  const nSub = studs.filter(s => ['ส่ง', 'ช้า'].includes(T.draft[s.studentId].sub)).length, nPend = studs.filter(s => T.draft[s.studentId].sub === 'รอ').length, nSc = studs.filter(s => T.draft[s.studentId].score !== '').length;
+  const du = dueTxt(it.due, T.boot.today, false), sib = itemsOf(it.subjectId).filter(i => i.cat === it.cat), ix = sib.indexOf(it);
+  const posTxt = `ลำดับที่ ${ix + 1} จาก ${sib.length} ใน${CATN[it.cat]}${sib[ix - 1] ? ' · ต่อจาก «' + esc(sib[ix - 1].label) + '»' : ' · อยู่แรกสุด'}${sib[ix + 1] ? ' · ก่อน «' + esc(sib[ix + 1].label) + '»' : ''}`;
+  let h = `<div class="row"><h1>${esc(it.label)} <small>${esc(g.label)}</small></h1><button class="btn sm" data-act="itemBack">กลับ</button></div><p class="duep" style="margin-top:-6px">${it.due ? `<span class="duep ${du.c}">${du.t}</span> · ` : ''}${posTxt} <button class="btn sm" data-act="ordOpen">จัดลำดับ</button></p>
+  <details class="card"><summary>แก้ชื่อช่อง / คะแนนเต็ม / หมวด / ลำดับ</summary>
+    <label>ชื่อช่อง</label><input class="full" id="itL" value="${esc(it.label)}">
+    <div class="wrap"><div><label>คะแนนเต็ม</label><input id="itM" type="number" inputmode="decimal" value="${esc(it.max)}" style="width:100px"></div>
+    <div><label>กำหนดส่ง</label><input id="itD" type="date" value="${esc(it.due || '')}"></div>
+    <div><label>หมวด</label><select id="itC">${CATS.map(c => `<option value="${c}" ${c === it.cat ? 'selected' : ''}>${CATN[c]}</option>`).join('')}</select></div></div>
+    <p class="wrap"><button class="btn pri sm" data-act="itemSave">บันทึกช่อง</button><button class="btn sm" data-act="ordOpen">จัดลำดับงาน</button><button class="btn sm dan" data-act="itemDel">ลบช่องนี้</button></p></details>
+  <div class="card row"><span>${it.hide === '1' ? '🔒 นักเรียน<b>ยังไม่เห็น</b>คะแนนช่องนี้' : 'นักเรียนเห็นคะแนนช่องนี้'}<br><small>สถานะส่งงานนักเรียนเห็นเสมอ</small></span><button class="btn sm ${it.hide === '1' ? 'pri' : ''}" data-act="hide1">${it.hide === '1' ? 'ประกาศคะแนน' : 'ซ่อนคะแนน'}</button></div>
+  <div class="card"><div class="row"><b>ส่งแล้ว ${nSub}/${studs.length} · ให้คะแนนแล้ว ${nSc}${nPend ? ' · <span class="pend">รอยืนยัน ' + nPend + '</span>' : ''}</b><small>เต็ม ${esc(it.max)}</small></div>
+    <p class="wrap">${nPend ? '<button class="btn sm pri" data-act="bulk" data-m="pend">ยืนยันที่รอ</button>' : ''}<button class="btn sm" data-act="bulk" data-m="sub">ติ๊กส่งทุกคน</button><button class="btn sm" data-act="bulk" data-m="full">ให้เต็มคนที่ส่ง</button><button class="btn sm" data-act="bulk" data-m="zero">0 ให้คนที่ยังไม่ส่ง</button></p>`;
+  studs.forEach(s => { const d = T.draft[s.studentId];
+    h += `<div class="stu"><span class="no">${esc(s.no)}</span><span class="nm">${stuName(s, g)}</span>
+      <button class="chip ${d.sub === 'รอ' ? 'pend' : d.sub ? 'on ' + (d.sub === 'ช้า' ? 'st-สาย' : 'st-มา') : ''}" style="width:66px" data-act="subCyc" data-stu="${esc(s.studentId)}">${d.sub === 'รอ' ? 'รอยืนยัน' : d.sub || 'ยังไม่ส่ง'}</button>
+      ${(T.sg.fmap[it.itemId + '|' + s.studentId] || []).length ? `<button class="btn sm" data-act="tFiles" data-stu="${esc(s.studentId)}">📎${T.sg.fmap[it.itemId + '|' + s.studentId].length}</button>` : ''}
+      <input class="scin" type="number" inputmode="decimal" min="0" max="${esc(it.max)}" step="any" value="${esc(d.score)}" data-in="score" data-stu="${esc(s.studentId)}" placeholder="–"></div>`; });
+  return h + '<p><button class="btn pri" style="width:100%" data-act="scSave">บันทึก</button></p></div>';
+}
+function openItem(id){
+  T.item = id; T.draft = {};
+  stuOf(grp(T.gid)).forEach(s => { const x = scGet(id, s.studentId) || {}; T.draft[s.studentId] = { sub: x.sub || '', score: x.score == null ? '' : String(x.score) }; });
+  T.tab = 'item'; draw();
+}
+
+/* ----- ตารางสอน ----- */
+function pTimes(){
+  const c = T.boot.cfg, P = +c.periods || 9, len = +c.periodMin || 50, br = +c.breakAfter || 0, bm = +c.breakMin || 0;
+  const m0 = String(c.dayStart || '08:30').split(':'); let t = (+m0[0] || 0) * 60 + (+m0[1] || 0);
+  const f = x => String(Math.floor(x / 60) % 24).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'), out = [];
+  for (let p = 1; p <= P; p++) { out.push(f(t) + '-' + f(t + len)); t += len; if (br && p === br) t += bm; }
+  return out;
+}
+const pTime = (p, span) => { const t = pTimes(), a = (t[p - 1] || '').split('-')[0], b = (t[p - 1 + (+span === 2 ? 1 : 0)] || '').split('-')[1]; return a && b ? a + '–' + b : ''; };
+function vTT(){
+  const b = T.boot, P = +b.cfg.periods || 9, m = {};
+  b.timetable.forEach(x => m[x.day + '|' + x.period] = x);
+  const c = b.cfg;
+  let h = `<h1>ตารางสอน</h1><div class="card row"><span>เริ่ม <b>${esc(c.dayStart || '08:30')}</b> · คาบละ <b>${esc(c.periodMin || 50)}</b> นาที${+c.breakAfter ? ` · พักหลังคาบ ${esc(c.breakAfter)} (${esc(c.breakMin || 0)} นาที)` : ''}</span><button class="btn sm pri" data-act="ptime">ตั้งเวลา</button></div>
+  <p class="mut">แตะช่อง = ใส่/แก้วิชา · เวลาแต่ละคาบคำนวณให้อัตโนมัติ${+c.breakAfter ? ' · คาบคู่จะไม่ข้ามช่วงพัก' : ''}</p><div class="tbl"><table class="tt"><thead><tr><th>วัน</th>`;
+  const br = +c.breakAfter || 0, brT = br && br < P ? (pTimes()[br - 1] || '').split('-')[1] + '–' + (pTimes()[br] || '').split('-')[0] : '';
+  for (let p = 1; p <= P; p++) { h += `<th class="tap" data-act="ptime">คาบ ${p}<br><small>${esc(pTime(p, 1))}</small></th>`; if (p === br && p < P) h += `<th class="brk tap" data-act="ptime">พัก<br><small>${esc(brT)}</small></th>`; }
+  h += '</tr></thead><tbody>';
+  for (let d = 1; d <= 5; d++) { h += `<tr><th>${DAYS[d]}</th>`;
+    for (let p = 1; p <= P; p++) { const x = m[d + '|' + p], g = x && grp(x.groupId);
+      if (g) { const two = +x.span === 2 && p < P && p !== br && !(m[d + '|' + (p + 1)] && grp(m[d + '|' + (p + 1)].groupId));
+        h += `<td class="tap has" ${two ? 'colspan="2"' : ''} data-act="ttCell" data-d="${d}" data-p="${p}">${esc(g.label)}<br><small>${esc((subj(g.subjectId) || {}).name || '')}${+x.span === 2 ? ' · คาบคู่' : ''}</small></td>`;
+        if (two) p++; }
+      else h += `<td class="tap" data-act="ttCell" data-d="${d}" data-p="${p}"></td>`;
+      if (p === br && p < P && d === 1) h += `<td class="brk" rowspan="5">พัก<br>กลางวัน</td>`; }
+    h += '</tr>'; }
+  h += `</tbody></table></div><p class="wrap"><button class="btn sm" data-act="pCount" data-d="1">+ เพิ่มคาบ</button><button class="btn sm" data-act="pCount" data-d="-1">− ลดคาบ</button><small>ตอนนี้ ${P} คาบ/วัน</small></p>`;
+  h += '<h3>สรุปคาบต่อสัปดาห์</h3><div class="card">' + (b.groups.map(g => `<div class="stu"><span class="nm">${esc(g.label)} <small>${esc((subj(g.subjectId) || {}).name || '')}</small></span><span>${b.timetable.filter(x => x.groupId === g.groupId).reduce((a, x) => a + (+x.span === 2 ? 2 : 1), 0)} คาบ</span></div>`).join('') || NOGRP) + '</div>';
+  return h;
+}
+
+/* ----- รายคน ----- */
+const STC = { s: ['ส่ง', 'k-s'], l: ['ส่งช้า', 'k-l'], w: ['รอยืนยัน', 'k-w'], m: ['ค้าง', 'k-m'], z: ['ไม่ส่ง', 'k-z'], o: ['ยังไม่ส่ง', 'k-o'] };
+function vStu(){
+  const P = T.stu, me = P.me;
+  let h = `<div class="row"><h1 style="margin-bottom:0">${esc(me.name)}${me.nick ? ' <small>(' + esc(me.nick) + ')</small>' : ''}</h1><button class="btn sm" data-act="stuBack">‹ กลับ</button></div>
+  <p class="wrap" style="margin-top:4px"><span>ม.${esc(me.room)} · เลขที่ ${esc(me.no)} · ${esc(me.studentId)}</span>${me.self ? '<span class="badge">ลงทะเบียนเอง</span>' : ''}${me.hasDev ? '<span class="badge">ผูกเครื่องแล้ว</span>' : '<span class="badge">ยังไม่ผูกเครื่อง</span>'}${me.active ? '' : '<span class="badge">ปิดใช้งาน</span>'}<button class="btn sm" data-act="stuEdit" data-stu="${esc(me.studentId)}">แก้ไขข้อมูล</button></p>`;
+  if (!P.subjects.length) return h + '<p class="mut">ห้องนี้ยังไม่มีรายวิชาที่สอน</p>';
+  h += '<div class="cols">';
+  P.subjects.forEach(sb => {
+    const dc = CATS.filter(c => sb.items.some(i => i.cat === c && i.score !== '')), sw = dc.reduce((a, c) => a + sb.net.cats[c].w, 0);
+    const proj = sw ? Math.round(dc.reduce((a, c) => a + sb.net.cats[c].net, 0) / sw * 1000) / 10 : null;
+    h += `<section class="card"><h2 style="margin:0">${esc(sb.name)} <small>${esc(sb.code || '')} · ${esc(sb.label)}</small></h2>
+      <div class="kpis" style="margin-top:8px"><div class="kpi" style="cursor:default"><small>คะแนนรวม</small><b>${sb.net.total}</b><small>/ 100</small></div>
+      <div class="kpi" style="cursor:default"><small>เกรดคาดการณ์</small><b>${proj == null ? '-' : grade(proj, T.boot.cfg)}</b><small>${proj == null ? 'ยังไม่มีคะแนน' : proj + '% ของหมวดที่มีคะแนน'}</small></div>
+      <div class="kpi" style="cursor:default"><small>เวลาเรียน</small><b class="${sb.att.pct != null && sb.att.pct < MS() ? 'warn' : ''}" style="${sb.att.pct != null && sb.att.pct >= MS() ? 'color:var(--ok)' : ''}">${sb.att.pct == null ? '-' : sb.att.pct + '%'}</b><small>${sb.att.total} คาบ${sb.att.pct != null && sb.att.pct < MS() ? ' · เสี่ยง มส.' : ''}</small></div>
+      <div class="kpi" style="cursor:default"><small>งานค้าง</small><b style="color:var(--abs)">${sb.items.filter(i => i.st === 'm').length}</b></div></div>
+      <small class="mut">${ST.map(x => x + ' ' + sb.att.c[x]).join(' · ')}</small>
+      ${sb.traits ? `<div style="margin-top:8px;line-height:1.7">${['char', 'rtw'].map(k => `${TKS[k]}: ${trTxt(sb.traits[k].sum, ((sb.traitLists || {})[k] || sb.traits[k].vals).length)}`).join('<br>')}</div>` : ''}<h3>งานและคะแนน</h3>`;
+    CATS.forEach(c => { const its = sb.items.filter(i => i.cat === c); if (!its.length) return;
+      h += `<div class="mut" style="font-size:.85rem;margin-top:6px"><b>${CATN[c]}</b> · ${sb.net.cats[c].net} / ${sb.net.cats[c].w}</div>`;
+      h += its.map(i => { const k = i.st ? STC[i.st] : null, du = i.due && (i.st === 'm' || i.st === 'o') ? dueTxt(i.due, P.today, false) : null, showChip = k && !(i.score !== '' && i.st === 's');
+        return `<div class="stu tap" data-act="psEdit" data-id="${i.itemId}" style="cursor:pointer;flex-wrap:wrap"><span class="nm" style="white-space:normal">${i.hide ? '🔒 ' : ''}${esc(i.label)}${du ? `<br><span class="duep ${du.c}">${du.t}</span>` : ''}${i.files.length ? ` <small>📎${i.files.length}</small>` : ''}</span>
+          ${showChip ? `<span class="chipl ${k[1]}" style="${i.st === 'o' ? 'color:var(--mut);background:var(--soft);border:1px solid var(--line)' : ''}">${k[0]}</span>` : ''}<b>${i.score !== '' ? esc(i.score) : '–'}</b><small>/ ${esc(i.max)}</small></div>`; }).join(''); });
+    h += `<h3>เวลาเรียนล่าสุด</h3><div class="wrap" style="gap:4px">${sb.recent.length ? sb.recent.map(r => [1, 2].slice(0, +r.span === 2 ? 2 : 1).map(k => { const v = k === 2 ? (r.s2 || r.s1) : r.s1;
+      return `<button class="chip ${v ? 'on st-' + v : ''}" style="width:auto;padding:4px 8px" data-act="psAtt" data-id="${r.sessionId}" data-k="${k}">${fmtD(r.date)}${+r.period ? ' <small>ค.' + (+r.period + k - 1) + '</small>' : ''} ${v ? STL[v] : '·'}</button>`; }).join('')).join('') : '<span class="mut">ยังไม่มีคาบ</span>'}</div>`;
+    if (sb.quiz.length) h += '<h3>ควิซ</h3>' + sb.quiz.map(q => `<div class="stu"><span class="nm">${esc(q.title)}</span><b>${esc(q.score)}</b><small>/ ${q.max}</small></div>`).join('');
+    h += '</section>';
+  });
+  return h + '</div>';
+}
+async function openStu(id){ const d = await tapi('tStudent', { studentId: id }); if (T.tab !== 'stu') T.stuFrom = T.tab === 'item' ? 'score' : T.tab === 'live' ? 'today' : T.tab; clearInterval(T.timer); T.stu = d; T.tab = 'stu'; draw(); document.documentElement.scrollTop = 0; }
+function stuForm(s, isNew){
+  const rooms = [...new Set(T.boot.groups.flatMap(g => roomsOf(g)).concat(s && s.room ? [s.room] : []))].sort((a, b) => a.localeCompare(b, 'th', { numeric: true }));
+  s = s || { studentId: '', name: '', nick: '', room: T.room || rooms[0] || '', no: '', active: true };
+  modal(`<h3>${isNew ? 'เพิ่มนักเรียน' : 'แก้ไขข้อมูลนักเรียน'}</h3>
+    <label for="fId">เลขประจำตัว</label><input class="full" id="fId" value="${esc(s.studentId)}" ${isNew ? '' : 'readonly'} inputmode="numeric">
+    <label for="fName">ชื่อ-นามสกุล</label><input class="full" id="fName" value="${esc(s.name)}" placeholder="เช่น นายกิตติ ใจดี">
+    <label for="fNick">ชื่อเล่น (ไม่บังคับ)</label><input class="full" id="fNick" value="${esc(s.nick || '')}">
+    <div class="wrap"><div><label for="fRoom">ห้อง</label><select id="fRoom">${rooms.map(r => `<option value="${esc(r)}" ${r === s.room ? 'selected' : ''}>ม.${esc(r)}</option>`).join('')}</select></div>
+    <div><label for="fNo">เลขที่</label><input id="fNo" type="number" inputmode="numeric" min="1" max="99" value="${esc(s.no)}" style="width:90px"></div></div>
+    <label style="color:inherit"><input type="checkbox" id="fAct" ${s.active !== false ? 'checked' : ''}> ใช้งานอยู่ (เอาออกเมื่อย้ายห้อง/ลาออก)</label>
+    <p class="wrap"><button class="btn pri" data-act="stuSave" data-new="${isNew ? '1' : ''}">บันทึก</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`);
+}
+
+/* ----- ควิซ ----- */
+const QT = { mc:'ปรนัย', tf:'ถูก/ผิด', num:'ตัวเลข (คำนวณ)', short:'เติมคำสั้น', text:'เขียนตอบ (ครูตรวจ)' };
+const qid = () => 'Q' + Math.random().toString(36).slice(2, 9);
+const subSel = (id, cur, attr) => `<select id="${id}" ${attr || ''}>${T.boot.subjects.map(s => `<option value="${s.subjectId}" ${s.subjectId === cur ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>`;
+function vQuizList(back){
+  const sid = T.qsub || (grp(T.gid) || {}).subjectId || (T.boot.subjects[0] || {}).subjectId, list = (T.quizzes || []).filter(q => q.subjectId === sid);
+  let h = `<div class="row"><h1>ควิซ</h1>${back}</div><div class="wrap" style="margin-bottom:10px">${subSel('qsub', sid, 'data-chg="qsub"')}<button class="btn pri sm" data-act="qzNew">+ สร้างควิซ</button></div>`;
+  h += list.length ? list.map(q => `<div class="card"><div class="row"><div><b>${esc(q.title)}</b><br><small>${q.qs.length} ข้อ · ${q.qs.reduce((a, x) => a + (+x.pts || 1), 0)} คะแนน${+q.timeLimit ? ' · ' + q.timeLimit + ' นาที' : ' · ไม่จับเวลา'} · ส่งแล้ว ${q.done} คน</small></div></div>
+    <p class="wrap"><button class="btn sm" data-act="qzEdit" data-id="${q.quizId}">แก้ไข</button><button class="btn sm" data-act="qzRes" data-id="${q.quizId}">ผลลัพธ์</button><button class="btn sm dan" data-act="qzDel" data-id="${q.quizId}">ลบ</button></p></div>`).join('')
+    : '<p class="mut">ยังไม่มีควิซของวิชานี้</p>';
+  return h + '<p class="mut">เปิดควิซให้นักเรียนทำได้ในหน้าคาบเรียน (แท็บ วันนี้ › เปิดคาบ › ควิซ)</p>';
+}
+function vQuizEdit(){
+  const z = T.qz, tot = z.qs.reduce((a, q) => a + (+q.pts || 0), 0);
+  let h = `<div class="row"><h1>${z.quizId ? 'แก้ไขควิซ' : 'สร้างควิซ'}</h1><button class="btn sm" data-act="more" data-m="quiz">กลับ</button></div>
+  <div class="card"><label>ชื่อควิซ</label><input class="full" data-qf="title" value="${esc(z.title)}" placeholder="เช่น ควิซ 1 เรื่องโมล">
+  <div class="wrap"><div><label>วิชา</label>${subSel('qzS', z.subjectId, 'data-qf="subjectId"' + (z.quizId ? ' disabled' : ''))}</div>
+  <div><label>ลงคะแนนในหมวด</label><select data-qf="cat"><option value="pre" ${z.cat !== 'post' ? 'selected' : ''}>ก่อนกลางภาค</option><option value="post" ${z.cat === 'post' ? 'selected' : ''}>หลังกลางภาค</option></select></div>
+  <div><label>เวลา (นาที, 0 = ไม่จับ)</label><input type="number" inputmode="numeric" min="0" data-qf="timeLimit" value="${esc(z.timeLimit)}" style="width:90px"></div></div>
+  <p class="mut">${z.qs.length} ข้อ · รวม <b id="qzTot">${tot}</b> คะแนน · สลับลำดับข้อและตัวเลือกให้แต่ละคนอัตโนมัติ</p></div>`;
+  z.qs.forEach((q, i) => {
+    h += `<div class="card qcard"><div class="row"><b>ข้อ ${i + 1}</b><span class="wrap"><select data-qi="${i}" data-qk="type">${Object.keys(QT).map(k => `<option value="${k}" ${q.type === k ? 'selected' : ''}>${QT[k]}</option>`).join('')}</select>
+      <input type="number" inputmode="decimal" min="0.5" step="0.5" data-qi="${i}" data-qk="pts" value="${esc(q.pts)}" style="width:64px" aria-label="คะแนน"><small>คะแนน</small>
+      <button class="btn sm" data-act="qMv" data-i="${i}" data-d="-1" aria-label="เลื่อนขึ้น">↑</button><button class="btn sm" data-act="qMv" data-i="${i}" data-d="1" aria-label="เลื่อนลง">↓</button><button class="btn sm dan" data-act="qDel" data-i="${i}">ลบ</button></span></div>
+      <textarea class="full" rows="2" data-qi="${i}" data-qk="q" placeholder="คำถาม" style="margin-top:6px">${esc(q.q)}</textarea>
+      <div class="ths">${q.img ? thumb(q.img, 'qImgDel" data-i="' + i) : ''}<label class="btn sm" style="margin:0;color:var(--ink)">🖼 ${q.img ? 'เปลี่ยนรูป' : 'แนบรูปประกอบ'}<input type="file" accept="image/*" hidden data-qimg="${i}"></label></div>`;
+    if (q.type === 'mc') h += '<label>ตัวเลือก (เลือกวงกลมหน้าข้อที่ถูก)</label>' + q.choices.map((c, ci) => `<div class="wrap" style="flex-wrap:nowrap;margin:4px 0"><input type="radio" name="ans_${i}" value="${ci}" data-qi="${i}" data-qk="ans" ${String(q.ans) === String(ci) ? 'checked' : ''} aria-label="คำตอบที่ถูก">
+      <input class="full" data-qi="${i}" data-qk="choice" data-ci="${ci}" value="${esc(c)}" placeholder="ตัวเลือก ${ci + 1}"><button class="btn sm" data-act="chDel" data-i="${i}" data-ci="${ci}" aria-label="ลบตัวเลือก">✕</button></div>`).join('') + `<button class="btn sm" data-act="chAdd" data-i="${i}">+ ตัวเลือก</button>`;
+    else if (q.type === 'tf') h += '<label>คำตอบ</label><div class="wrap">' + [['T', 'ถูก'], ['F', 'ผิด']].map(o => `<label style="margin:0;color:var(--ink)"><input type="radio" name="ans_${i}" value="${o[0]}" data-qi="${i}" data-qk="ans" ${q.ans === o[0] ? 'checked' : ''}> ${o[1]}</label>`).join('') + '</div>';
+    else if (q.type === 'num') h += `<div class="wrap"><div><label>คำตอบ</label><input data-qi="${i}" data-qk="ans" value="${esc(q.ans)}" inputmode="decimal" style="width:150px" placeholder="เช่น 0.25 หรือ 6.02e23"></div>
+      <div><label>ยอมคลาด ±%</label><input type="number" data-qi="${i}" data-qk="tol" value="${esc(q.tol)}" style="width:80px"></div><div><label>หน่วย (แสดงให้นักเรียน)</label><input data-qi="${i}" data-qk="unit" value="${esc(q.unit || '')}" style="width:110px"></div></div>`;
+    else if (q.type === 'short') h += `<label>คำตอบที่ยอมรับ (หลายแบบคั่นด้วย | ไม่สนตัวพิมพ์เล็กใหญ่และช่องว่าง)</label><input class="full" data-qi="${i}" data-qk="ans" value="${esc(q.ans)}" placeholder="เช่น ไอโซโทป | isotope">`;
+    else h += '<p class="mut">ครูให้คะแนนเองในหน้าผลลัพธ์</p>';
+    h += '</div>';
+  });
+  h += `<div class="card wrap">${Object.keys(QT).map(k => `<button class="btn sm" data-act="qAdd" data-t="${k}">+ ${QT[k]}</button>`).join('')}<button class="btn sm" data-act="qImp">📋 วางข้อสอบจากข้อความ / AI</button></div>`;
+  return h + '<p><button class="btn pri" style="width:100%" data-act="qzSave">บันทึกควิซ</button></p>';
+}
+const AI_PROMPT = `ออกข้อสอบเรื่อง [หัวข้อ] สำหรับนักเรียน [ระดับชั้น] จำนวน [N] ข้อ
+ตอบเป็นข้อความล้วนตามรูปแบบนี้เท่านั้น ไม่ต้องมีคำอธิบายอื่น
+
+1. คำถามปรนัย [1 คะแนน]
+ก. ตัวเลือก
+*ข. ตัวเลือกที่ถูก (ใส่ * หน้าตัวที่ถูก)
+ค. ตัวเลือก
+ง. ตัวเลือก
+
+2. คำถามถูก/ผิด
+ตอบ: ถูก
+
+3. โจทย์คำนวณ [2 คะแนน]
+ตอบ: 0.25 mol ±2%
+
+4. คำถามเติมคำ
+ตอบ: คำตอบหลัก | คำตอบที่ยอมรับได้อีกแบบ
+
+5. คำถามให้อธิบาย (ไม่ต้องมีบรรทัด ตอบ: = ครูตรวจเอง)`;
+function parseQuiz(txt){
+  const out = [], TH = 'กขคงจฉชซ', fin = c => {
+    const b = { id: qid(), q: c.q.trim(), pts: c.pts || 1, img: '' }, raw = (c.raw || '').trim();
+    if (c.choices.length >= 2) { let a = c.ans; if (a == null && raw) { const r = raw.replace(/[.)\s]/g, ''); a = TH.indexOf(r) >= 0 ? TH.indexOf(r) : /^[a-h]$/i.test(r) ? r.toLowerCase().charCodeAt(0) - 97 : null; }
+      return Object.assign(b, { type: 'mc', choices: c.choices, ans: a == null ? '' : a }); }
+    if (!raw) return Object.assign(b, { type: 'text' });
+    if (/^(ถูก|true|t|ใช่)$/i.test(raw)) return Object.assign(b, { type: 'tf', ans: 'T' });
+    if (/^(ผิด|false|f|ไม่ใช่)$/i.test(raw)) return Object.assign(b, { type: 'tf', ans: 'F' });
+    let tol = ''; const r2 = raw.replace(/±\s*([\d.]+)\s*%/, (_, t) => { tol = t; return ''; }).trim();
+    const m = /^([-+−]?[\d.,]+(?:\s*(?:[eE]|[×xX*·]\s*10\^?)\s*[-+−]?\d+)?)\s*(.*)$/.exec(r2);
+    if (m && !raw.includes('|') && !isNaN(parseNum(m[1]))) return Object.assign(b, { type: 'num', ans: m[1].replace(/\s/g, ''), tol: tol || 1, unit: m[2].trim() });
+    return Object.assign(b, { type: 'short', ans: raw });
+  };
+  let cur = null; const push = () => { if (cur) out.push(fin(cur)); cur = null; };
+  String(txt).split(/\r?\n/).forEach(line => { const l = line.trim(); if (!l) return; let m;
+    if ((m = /^(?:ข้อ\s*)?(\d+)\s*[.)]\s*(.+)$/.exec(l))) { push(); cur = { q: m[2], choices: [], ans: null, raw: '' };
+      const pm = /[\[(]\s*(\d+(?:\.\d+)?)\s*คะแนน\s*[\])]/.exec(cur.q); if (pm) { cur.pts = +pm[1]; cur.q = cur.q.replace(pm[0], '').trim(); } return; }
+    if (!cur) return;
+    if ((m = /^(\*?)\s*([ก-ง]|[จฉชซ]|[a-hA-H])\s*[.)]\s*(.+)$/.exec(l))) { let t = m[3].trim(), star = !!m[1]; if (/\s*\*$/.test(t)) { star = true; t = t.replace(/\s*\*$/, ''); }
+      if (star) cur.ans = cur.choices.length; cur.choices.push(t); return; }
+    if ((m = /^(?:ตอบ|คำตอบ|เฉลย|answer|ans)\s*[:：]\s*(.+)$/i.exec(l))) { cur.raw = m[1]; return; }
+    cur.q += '\n' + l; });
+  push(); return out;
+}
+let R_rows = [];
+function vQuizRes(){
+  const R = T.qr, qs = R.qs, gs = T.boot.groups.filter(x => x.subjectId === R.quiz.subjectId), all = [];
+  gs.forEach(x => stuOf(x).forEach(s => all.push(s)));
+  if (T.qrg !== 'all' && !gs.some(x => x.groupId === T.qrg)) { const r0 = R.rows[0], rm = r0 && (all.find(s => s.studentId === r0.studentId) || {}).room; T.qrg = rm ? (gs.find(x => roomsOf(x).includes(rm)) || {}).groupId || 'all' : 'all'; }
+  const g = T.qrg === 'all' ? gs : gs.filter(x => x.groupId === T.qrg), studs = []; g.forEach(x => stuOf(x).forEach(s => studs.push(s)));
+  const nm = {}; studs.forEach(s => nm[s.studentId] = s); R_rows = R.rows.filter(r => nm[r.studentId]);
+  const done = R_rows.filter(r => r.end), max = qs.reduce((a, q) => a + (+q.pts || 1), 0);
+  const pend = done.reduce((a, r) => a + r.detail.filter(d => d.ok === null && d.got == null).length, 0);
+  const avg = done.length ? (done.reduce((a, r) => a + +r.score, 0) / done.length).toFixed(1) : '-';
+  let h = `<div class="row"><h1>ผล: ${esc(R.quiz.title)}</h1><button class="btn sm" data-act="more" data-m="quiz">กลับ</button></div>
+  <p class="wrap">${gs.length > 1 ? [{ groupId: 'all', label: 'ทุกห้อง' }].concat(gs).map(x => `<button class="btn sm ${T.qrg === x.groupId ? 'pri' : ''}" data-act="qrg" data-g="${x.groupId}">${esc(x.label)}</button>`).join('') : ''}</p>
+  <div class="card"><div class="row"><div>ส่งแล้ว <b class="big">${done.length}</b> / ${studs.length}${R_rows.length > done.length ? ` <small>(กำลังทำ ${R_rows.length - done.length})</small>` : ''}</div><div class="center">เฉลี่ย<div class="big">${avg} <small>/ ${max}</small></div></div></div>
+  ${pend ? `<p class="warn">คำตอบแบบเขียนรอตรวจ ${pend} ข้อ</p>` : ''}<p class="wrap"><button class="btn sm" data-act="qzRegrade">ตรวจใหม่ทั้งหมด (หลังแก้เฉลย)</button><button class="btn sm" data-act="qzRefresh">โหลดใหม่</button></p></div>
+  <h3>วิเคราะห์รายข้อ</h3><div class="card">`;
+  h += qs.map((q, i) => { const ds = done.map(r => r.detail.find(d => d.id === q.id)).filter(Boolean), ok = ds.filter(d => d.ok === true).length, auto = q.type !== 'text';
+    const pct = ds.length ? Math.round(ok / ds.length * 100) : 0;
+    return `<div class="stu" style="flex-wrap:wrap"><span class="no">${i + 1}</span><span class="nm">${esc(q.q.split('\n')[0])}<br><small>${QT[q.type]}</small></span><span style="width:120px">${auto ? `<span class="${pct < 50 ? 'warn' : ''}">ถูก ${pct}%</span><div class="bar2"><i style="width:${pct}%;${pct < 50 ? 'background:var(--abs)' : ''}"></i></div>` : '<small>ครูตรวจ</small>'}</span>
+      ${q.type === 'mc' && ds.length ? `<div class="ths" style="font-size:.85rem">${q.choices.map((c, k) => { const n = done.filter(r => String(r.ans[q.id]) === String(k)).length; return `<span class="${k === +q.ans ? 'ok' : 'mut'}">${'กขคงจฉชซ'[k] || k + 1}. ${n} คน</span>`; }).join(' · ')}</div>` : ''}</div>`; }).join('');
+  h += '</div><h3>รายคน</h3><div class="card">';
+  h += R_rows.slice().sort((a, b) => (nm[a.studentId] ? (+nm[a.studentId].no) : 999) - (nm[b.studentId] ? (+nm[b.studentId].no) : 999)).map(r => { const s = nm[r.studentId] || { name: r.studentId, no: '', room: '' }, pn = r.detail.filter(d => d.ok === null && d.got == null).length;
+    const used = r.end ? Math.round((+r.end - +r.start) / 60000) : null, late = r.detail.some(d => d.late);
+    return `<div class="stu"><span class="no">${esc(s.no)}</span><span class="nm"><small>${esc(s.room)}</small> ${esc(s.name)}<br><small>${r.end ? (used < 1 ? 'ใช้เวลาไม่ถึง 1 นาที' : 'ใช้เวลา ' + used + ' นาที') : 'กำลังทำ'}${late ? ' · <span class="warn">ส่งเกินเวลา</span>' : ''}${r.leaves ? ` · <span class="warn">ออกจากหน้า ${r.leaves} ครั้ง</span>` : ''}${pn ? ' · <span class="warn">รอตรวจ ' + pn + '</span>' : ''}</small></span>
+      <b>${r.end ? esc(r.score) + '/' + max : '-'}</b>${r.end ? `<button class="btn sm" data-act="qzAns" data-stu="${esc(r.studentId)}">ดูคำตอบ</button>` : ''}<button class="btn sm" data-act="qzReset" data-stu="${esc(r.studentId)}">ทำใหม่</button></div>`; }).join('') || '<p class="mut">ยังไม่มีคนทำ</p>';
+  const notYet = studs.filter(s => !R_rows.some(r => r.studentId === s.studentId));
+  if (notYet.length) h += `<p class="mut">ยังไม่ได้ทำ: ${notYet.map(s => esc(s.name)).join(', ')}</p>`;
+  return h + '</div>';
+}
+function ansTxt(q, a){
+  if (a == null || String(a) === '') return '<span class="mut">(ไม่ได้ตอบ)</span>';
+  if (q.type === 'mc') return esc((q.choices[+a] != null ? ('กขคงจฉชซ'[+a] || '') + '. ' + q.choices[+a] : a));
+  if (q.type === 'tf') return a === 'T' ? 'ถูก' : 'ผิด';
+  return nl(a);
+}
+function keyTxt(q){
+  if (q.type === 'mc') return ('กขคงจฉชซ'[+q.ans] || '') + '. ' + esc(q.choices[+q.ans]);
+  if (q.type === 'tf') return q.ans === 'T' ? 'ถูก' : 'ผิด';
+  if (q.type === 'num') return esc(q.ans) + ' ' + esc(q.unit || '') + ' (±' + esc(q.tol) + '%)';
+  if (q.type === 'short') return esc([].concat(q.ans).join(' | '));
+  return '';
+}
+function vAnsModal(sid){
+  const R = T.qr, r = R.rows.find(x => x.studentId === sid), s = T.boot.students.find(x => x.studentId === sid) || { name: sid };
+  modal(`<h3>${esc(s.name)} · ${esc(r.score)} คะแนน</h3>` + R.qs.map((q, i) => { const d = r.detail.find(x => x.id === q.id) || {};
+    return `<div class="card"><b>ข้อ ${i + 1}</b> ${d.ok === true ? '<span class="ok">✓</span>' : d.ok === false ? '<span class="ng">✗</span>' : ''}<p style="margin:.3em 0">${nl(q.q)}</p>
+      <div>ตอบ: <b>${ansTxt(q, r.ans[q.id])}</b></div>${q.type !== 'text' ? `<small class="mut">เฉลย: ${keyTxt(q)}</small>` : `<div class="wrap" style="margin-top:6px"><input class="scin" id="mg_${q.id}" type="number" inputmode="decimal" min="0" max="${q.pts}" step="any" value="${d.got == null ? '' : d.got}" placeholder="–"><small>/ ${q.pts}</small><button class="btn sm pri" data-act="qzGrade" data-stu="${esc(sid)}" data-q="${q.id}">บันทึก</button></div>`}</div>`; }).join('') + '<p><button class="btn" data-act="mclose">ปิด</button></p>');
+}
+
+/* ----- เพิ่มเติม ----- */
+function vMore(){
+  const b = T.boot, back = '<button class="btn sm" data-act="more" data-m="menu">กลับ</button>';
+  if (T.more === 'sub') return `<div class="row"><h1>วิชาและสัดส่วนคะแนน</h1>${back}</div><p><button class="btn pri sm" data-act="subNew">+ เพิ่มวิชา</button></p>` + b.subjects.map(s => `<div class="card">
+    <div class="wrap"><div><label>รหัสวิชา</label><input id="sc_${s.subjectId}" value="${esc(s.code)}" style="width:150px"></div><div style="flex:1"><label>ชื่อวิชา</label><input class="full" id="sn_${s.subjectId}" value="${esc(s.name)}"></div></div>
+    <div class="wrap">${[['wPre','ก่อนกลางภาค'],['wMid','กลางภาค'],['wPost','หลังกลางภาค'],['wFinal','ปลายภาค']].map(w => `<div><label>${w[1]}</label><input id="${w[0]}_${s.subjectId}" type="number" inputmode="decimal" value="${esc(s[w[0]])}" style="width:78px"></div>`).join('')}</div>
+    <label for="wMode_${s.subjectId}">วิธีรวมงานหลายชิ้นในหมวด</label><select id="wMode_${s.subjectId}"><option value="">ตามคะแนนเต็มของงาน</option><option value="eq"${s.wMode === 'eq' ? ' selected' : ''}>ทุกงานน้ำหนักเท่ากัน</option></select>
+    <label>ห้องที่สอน</label><div class="wrap">${b.groups.filter(g => g.subjectId === s.subjectId).map(g => `<span class="btn sm">${esc(g.label)} <a data-act="grpDel" data-id="${g.groupId}" style="color:var(--abs);cursor:pointer;padding:0 4px" aria-label="ลบห้อง">✕</a></span>`).join('')}<button class="btn sm" data-act="grpNew" data-id="${s.subjectId}">+ เพิ่มห้อง</button></div>
+    <p class="row"><small>สัดส่วนรวม ${(+s.wPre||0)+(+s.wMid||0)+(+s.wPost||0)+(+s.wFinal||0)}</small><span class="wrap"><button class="btn sm dan" data-act="subDel" data-id="${s.subjectId}">ลบวิชา</button><button class="btn pri sm" data-act="subSave" data-id="${s.subjectId}">บันทึก</button></span></p></div>`).join('') +
+    '<div class="card"><b>งานรวมกันเกินสัดส่วนได้ ระบบย่อให้เอง</b><p class="mut" style="margin:6px 0 0">ตัวอย่าง หมวดก่อนกลางภาค สัดส่วน 25 มีงาน A เต็ม 10 ได้ 8 และงาน B เต็ม 40 ได้ 20<br>• ตามคะแนนเต็มของงาน: (8 + 20) ÷ (10 + 40) × 25 = <b>14</b><br>• ทุกงานน้ำหนักเท่ากัน: (80% + 50%) ÷ 2 × 25 = <b>16.25</b><br>คะแนนหมวดไม่เกินสัดส่วนเสมอ ไม่ว่ามีกี่งาน · ช่องที่ยังไม่ให้คะแนนนับเป็น 0</p></div>';
+  if (T.more === 'stu') { const rs = [...new Set(b.students.map(s => s.room).concat(b.groups.flatMap(g => roomsOf(g))))].sort((a, c) => a.localeCompare(c, 'th', { numeric:true })); const room = T.room || rs[0] || '';
+    const list = b.students.filter(s => s.room === room).sort((a, c) => (a.active === false) - (c.active === false) || +a.no - +c.no), nSelf = b.students.filter(s => s.self).length;
+    return `<div class="row"><h1>นักเรียน</h1>${back}</div><p class="wrap">${rs.map(r => `<button class="btn sm ${r === room ? 'pri' : ''}" data-act="room" data-r="${esc(r)}">${esc(r)}</button>`).join('')}<button class="btn sm" data-act="stuAdd">+ เพิ่มนักเรียน</button></p>
+    ${b.students.some(s => s.resetReq) ? `<div class="card" style="border-color:var(--late)"><h3 style="margin-top:0">คำขอรีเซ็ตรหัส ${b.students.filter(s => s.resetReq).length} คน</h3>${b.students.filter(s => s.resetReq).map(s => `<div class="stu"><span class="nm" style="white-space:normal"><b>${esc(s.name)}</b>${nickOf(s)} <small>ม.${esc(s.room)} เลขที่ ${esc(s.no)} · ${esc(s.studentId)} · ขอเมื่อ ${esc(s.resetReq.slice(5, 16))}</small></span><button class="btn sm pri" data-act="reqOk" data-stu="${esc(s.studentId)}">อนุมัติ</button><button class="btn sm" data-act="reqNo" data-stu="${esc(s.studentId)}">ปฏิเสธ</button></div>`).join('')}<p class="mut" style="margin-bottom:0">อนุมัติ = ล้างรหัสและเครื่องที่ผูกไว้ นักเรียนตั้งรหัสใหม่เองได้ คะแนนและงานเดิมไม่หาย</p></div>` : ''}
+    ${nSelf ? `<p class="mut">นักเรียนลงทะเบียนเอง ${nSelf} คน (ป้าย "ลงทะเบียนเอง") ตรวจชื่อ เลขที่ ห้อง แล้วแก้ได้ที่ปุ่ม แก้ไข</p>` : ''}
+    <div class="card">${list.length ? list.map(s => `<div class="stu" style="flex-wrap:wrap;${s.active === false ? 'opacity:.55' : ''}"><span class="no">${esc(s.no)}</span><span class="nm" style="white-space:normal"><button class="nmlink" data-act="stu" data-stu="${esc(s.studentId)}">${esc(s.name)}</button>${nickOf(s)} ${s.self ? '<span class="badge">ลงทะเบียนเอง</span>' : ''}${s.active === false ? ' <span class="badge">ปิดใช้งาน</span>' : ''}<br><small>${esc(s.studentId)} · ${s.locked ? '<span class="warn">รหัสถูกล็อก</span>' : s.hasDev ? 'ผูกเครื่องแล้ว' : s.hasPin ? 'ยังไม่ผูกเครื่อง' : 'ยังไม่ลงทะเบียน'}</small></span>
+      <span class="wrap" style="gap:4px"><button class="btn sm" data-act="stuEdit" data-stu="${esc(s.studentId)}">แก้ไข</button><button class="btn sm" data-act="stuReset" data-stu="${esc(s.studentId)}" data-w="device">รีเซ็ตเครื่อง</button><button class="btn sm" data-act="stuReset" data-stu="${esc(s.studentId)}" data-w="pin">รีเซ็ตรหัส</button></span></div>`).join('') : '<p class="mut">ยังไม่มีรายชื่อ</p>'}</div>
+    <p class="mut">นักเรียนลงทะเบียนเองได้ด้วยเลขประจำตัว หรือครูเพิ่มที่ปุ่ม + เพิ่มนักเรียน / วางรายชื่อในชีต Students ก็ได้</p>`; }
+  if (T.more === 'cfg') { const c = b.cfg, pres = String(c.presentAs || '').split(','), base = location.href.split('#')[0].split('?')[0];
+    return `<div class="row"><h1>ตั้งค่า</h1>${back}</div><div class="card">
+    <label>แตะหลังเปิดคาบเกินกี่นาที = สาย</label><input id="c_lateMin" type="number" value="${esc(c.lateMin)}" style="width:100px">
+    <p class="mut">เวลาคาบ / นาทีต่อคาบ / จำนวนคาบ ตั้งที่แท็บ ตารางสอน</p>
+    <div class="wrap"><div><label for="c_msPct">เวลาเรียนต่ำกว่ากี่ % = มส.</label><input id="c_msPct" type="number" min="0" max="100" value="${esc(c.msPct || 80)}" style="width:100px"></div>
+    <div><label for="c_rPct">ส่งงานที่ถึงกำหนดต่ำกว่ากี่ % = เสี่ยง ร.</label><input id="c_rPct" type="number" min="0" max="100" value="${esc(c.rPct || 80)}" style="width:100px"></div></div>
+    <label>สถานะที่นับเป็น "มาเรียน" ในการคิดเวลาเรียน</label><div class="wrap">${ST.map(s => `<label style="margin:0;color:inherit"><input type="checkbox" class="c_pres" value="${s}" ${pres.includes(s) ? 'checked' : ''}> ${s}</label>`).join('')}</div>
+    <label>เกณฑ์เกรด 4, 3.5, 3, 2.5, 2, 1.5, 1</label><input class="full" id="c_gradeCut" value="${esc(c.gradeCut)}">
+    <label style="color:inherit"><input type="checkbox" id="c_showGrade" ${c.showGrade === '1' ? 'checked' : ''}> ให้นักเรียนเห็นเกรดขณะนี้</label>
+    <label for="c_charList">ตัวชี้วัดคุณลักษณะอันพึงประสงค์ (บรรทัดละข้อ)</label><textarea class="full" rows="5" id="c_charList">${esc(c.charList || TRDEF.char.join('\n'))}</textarea>
+    <label for="c_rtwList">ตัวชี้วัดการอ่าน คิดวิเคราะห์ และเขียน (บรรทัดละข้อ)</label><textarea class="full" rows="5" id="c_rtwList">${esc(c.rtwList || TRDEF.rtw.join('\n'))}</textarea>
+    <p class="mut">แก้ถ้อยคำได้ตลอด แต่ถ้าลบหรือสลับลำดับข้อหลังประเมินแล้ว คะแนนจะผูกกับลำดับข้อเดิม</p>
+    <p><button class="btn pri" data-act="cfgSave">บันทึกตั้งค่า</button></p></div>
+    <div class="card row"><span><b>เชื่อมกับ STUMIS</b><br><small class="mut">ส่งเช็คชื่อ (รวมที่แก้ย้อนหลัง) เข้าระบบโรงเรียนให้เอง รหัสผ่านเก็บใน Apps Script ไม่แสดงในหน้าเว็บ</small></span><button class="btn sm" data-act="stuSetup">ตั้งค่าบัญชี</button></div>
+    <div class="card"><label style="color:inherit"><input type="checkbox" id="c_stuAuto" data-act="stuAutoSet" ${c.stuAuto === '1' ? 'checked' : ''}> <b>ส่งเข้า STUMIS อัตโนมัติ</b></label><br><small class="mut">ทุกชั่วโมง ระบบจะส่งคาบที่ปิดแล้วและยังไม่ส่ง รวมถึงคาบที่แก้ย้อนหลัง (แก้เฉพาะคนที่ต่าง) · ถ้าส่งไม่ได้จะขึ้น <b style="color:var(--abs)">!</b> ที่หัวคาบ แล้วรอจนกว่าจะแก้คาบนั้น</small></div>
+    <div class="card"><label>เปลี่ยนรหัสผ่านครู (อย่างน้อย 6 ตัว)</label><div class="wrap"><input id="c_pass" type="password"><button class="btn" data-act="passSave">เปลี่ยน</button></div></div>
+    <div class="card"><b>ลิงก์สำหรับเขียนลงแท็ก NFC (หน้านักเรียน)</b><p style="word-break:break-all">${esc(base)}</p><b>ลิงก์หน้าครู</b><p style="word-break:break-all">${esc(base)}#teacher</p><button class="btn sm" data-act="tLogout">ออกจากระบบครู</button></div>`; }
+  if (T.more === 'quiz') return vQuizList(back);
+  if (T.more === 'qedit') return vQuizEdit();
+  if (T.more === 'qres') return vQuizRes();
+  if (T.more === 'log') { const sm = {}; b.students.forEach(x => sm[x.studentId] = x);
+    const who = w => esc(w.replace(/^นักเรียน (\S+)$/, (m0, id) => sm[id] ? 'นักเรียน ' + id + ' ' + sm[id].name + ' (ม.' + sm[id].room + ')' : m0));
+    const key = k => esc(k).split('|').map(t => { const x = sm[t.trim().split(' ')[0]]; return x ? `${esc(t)} <b>${esc(x.name)}</b> (ม.${esc(x.room)})` : t; }).join(' · ');
+    return `<div class="row"><h1>ประวัติการแก้ไข</h1>${back}</div><p class="mut">แสดง 300 รายการล่าสุด (ทั้งหมดอยู่ในชีต Log) · ปุ่ม เรียกคืน ใช้ได้กับการแก้คะแนน เช็คชื่อ ช่องคะแนน วิชา และข้อมูลนักเรียน (การลบเรียกคืนไม่ได้)</p><div class="card">${(T.log || []).map(l => `<div class="stu" style="flex-wrap:wrap"><span style="flex:1;min-width:0"><small>${esc(l.time)} · ${who(l.who)}</small><br><b>${esc(l.what)}</b> ${key(l.key)}${l.old || l.new ? `<br><small>${esc(l.old || '(ว่าง)')} → ${esc(l.new || '(ว่าง)')}</small>` : ''}</span>${l.canUndo ? `<button class="btn sm" data-act="undo" data-id="${esc(l.id)}">เรียกคืน</button>` : l.undone ? '<span class="badge">เรียกคืนแล้ว</span>' : ''}</div>`).join('') || '<p class="mut">ยังไม่มีประวัติ</p>'}</div>`; }
+  return '<h1>เพิ่มเติม</h1>' + [['quiz','ควิซ'],['sub','วิชาและสัดส่วนคะแนน'],['stu','นักเรียน / รีเซ็ตเครื่อง-รหัส'],['cfg','ตั้งค่า / ลิงก์ NFC'],['log','ประวัติการแก้ไข']].map(m => `<button class="btn" style="width:100%;margin-bottom:8px;text-align:left" data-act="more" data-m="${m[0]}">${m[1]}</button>`).join('') + '<button class="btn sm" data-act="tReload">โหลดข้อมูลใหม่</button>';
+}
+
+const TA = {
+  tLogin: () => run(async () => { const d = await api('tLogin', { pass: $('#tpass').value }); LS.set('tt', d.t); await tLoad(); }),
+  tLogout: () => { LS.set('tt', null); T.boot = null; draw(); },
+  tReload: () => tLoad(),
+  tab: d => run(async () => { clearInterval(T.timer); T.tab = d.t; if (d.t === 'today') return tLoad(); if (d.t === 'att') { T.att = null; draw(); return grp(T.gid) ? attLoad() : null; } if (d.t === 'score') { T.sg = null; draw(); return grp(T.gid) ? scLoad() : null; } if (d.t === 'more') T.more = 'menu'; draw(); }),
+  more: d => run(async () => { T.more = d.m; if (d.m === 'log') T.log = await tapi('tLog'); if (d.m === 'quiz') T.quizzes = await tapi('tQuizList'); if (d.m === 'stu') { T.boot = await tapi('tBoot'); if (!T.room && grp(T.gid)) T.room = roomsOf(grp(T.gid))[0]; } draw(); }),
+  room: d => { T.room = d.r; draw(); },
+  open: d => run(async () => { const se = await tapi('tOpen', { groupId: d.g, period: d.p, span: d.s }); T.boot.open.push(se); T.gid = d.g; await openLive(se.sessionId); }),
+  openX: () => TA.open({ g: $('#oG').value, p: $('#oP').value, s: $('#oS').value }),
+  live: d => run(() => openLive(d.id)),
+  stuSync: () => run(() => stuCheck(stuTodo(T.att.sessions).map(x => x.sessionId))),
+  stuOne: d => run(() => stuCheck([d.id])),
+  stuGo: () => run(async () => { const ids = T.stuPlan || []; let okN = 0; const errs = [];
+    for (let i = 0; i < ids.length; i++) { modal(`<h3>กำลังส่งเข้า STUMIS</h3><p>${i + 1} / ${ids.length} คาบ</p><p class="mut">อย่าปิดหน้านี้</p>`);
+      try { const r = await tapi('tStumisPush', { sessionId: ids[i] }); if (r.sent) okN++; else errs.push('มีคาบที่ส่งไม่ได้'); } catch(e){ errs.push(e.message); } }
+    mclose(); toast(errs.length ? 'ส่งแล้ว ' + okN + ' คาบ · ผิดพลาด: ' + errs[0] : 'ส่งเข้า STUMIS แล้ว ' + okN + ' คาบ');
+    if (T.tab === 'live' && T.live) await openLive(T.live.session.sessionId); else if (T.tab === 'att') await attLoad(); }),
+  stuImp: () => run(async () => { const g = grp(T.gid);
+    modal(`<h3>นำเข้าเวลาเรียนจาก STUMIS</h3><p>กำลังอ่านรายงานของ ${esc(g.label)}…</p><p class="mut">ยังไม่มีการบันทึกใด ๆ</p>`);
+    let r; try { r = await tapi('tStumisImport', { groupId: g.groupId, dry: true }); } catch(e){ modal(`<h3>นำเข้าจาก STUMIS</h3><p class="warn">${esc(e.message)}</p><p><button class="btn" data-act="mclose">ปิด</button></p>`); return; }
+    const n = r.sessions - r.skip;
+    modal(`<h3>นำเข้าเวลาเรียนจาก STUMIS — ${esc(g.label)}</h3>
+      ${r.classes.map(c => `<div class="stu"><span class="nm">${esc(c.label)}</span><small>${c.err ? `<span class="warn">${esc(c.err)}</span>` : `${c.cols} คาบ · ${c.matched}/${c.rows} คน`}</small></div>`).join('')}
+      <div class="card" style="margin:8px 0">${r.sessions ? `พบ ${r.sessions} ครั้ง (${r.periods} คาบ${r.doubles ? ' · คาบคู่ ' + r.doubles : ''}) ช่วง ${fmtD(r.first)} – ${fmtD(r.last)}<br>
+        <b>จะสร้างใหม่ ${n} ครั้ง</b>${r.skip ? ` · ข้าม ${r.skip} ครั้งที่มีในระบบเราแล้ว` : ''}` : 'ไม่พบการเช็คชื่อในภาคเรียนนี้'}
+        ${r.truant ? `<br><small class="mut">"หนีเรียน" ${r.truant} ช่อง → บันทึกเป็น ขาด</small>` : ''}
+        ${r.foreign ? `<br><small class="mut">ข้ามนักเรียนใน STUMIS ที่ไม่อยู่ในกลุ่มนี้ ${r.foreign} คน</small>` : ''}
+        ${r.unmatched.length ? `<br><small class="warn">หาในรายชื่อ STUMIS ไม่เจอ ${r.unmatched.length} คน: ${r.unmatched.map(esc).join(', ')}</small>` : ''}</div>
+      <p class="mut">คาบที่นำเข้าจะปิดแล้ว และถือว่าตรงกับ STUMIS (ไม่ส่งกลับ) แก้ทีหลังได้ตามปกติ</p>
+      <p class="wrap">${n ? `<button class="btn pri" data-act="stuImpGo">นำเข้า ${n} ครั้ง</button>` : ''}<button class="btn" data-act="mclose">${n ? 'ยกเลิก' : 'ปิด'}</button></p>`); }),
+  stuImpGo: () => run(async () => { modal('<h3>กำลังนำเข้า…</h3><p class="mut">อย่าปิดหน้านี้</p>');
+    const r = await tapi('tStumisImport', { groupId: T.gid }); mclose(); toast('นำเข้าแล้ว ' + r.created + ' ครั้ง'); T.att = null; draw(); await attLoad(); }),
+  sgsOpen: () => { const g = grp(T.gid); if (!g) return;
+    modal(`<h3>กรอกลง SGS — ${esc(g.label)}</h3>
+      <p><b>ครั้งแรก:</b> ลากปุ่มนี้ไปวางที่แถบบุ๊กมาร์กของ Chrome บนคอมพิวเตอร์</p>
+      <p class="center"><a class="btn pri" id="sgsBm" href="#" draggable="true" onclick="return false">⭐ เติมจากระบบครู</a></p>
+      <p class="mut">ถ้าลากไม่ได้ กด <button class="btn sm" data-act="sgsBmCopy">คัดลอกโค้ดบุ๊กมาร์ก</button> แล้วสร้างบุ๊กมาร์กใหม่ วางโค้ดในช่อง URL</p>
+      <p><b>ทุกครั้ง:</b></p><ol style="padding-left:20px;margin:4px 0">
+        <li>เลือกทศนิยมแล้วกดคัดลอกข้อมูลด้านล่าง (มีคะแนน 4 หมวด คุณลักษณะ อ่านคิดเขียน และเวลาเรียน)</li>
+        <li>เปิด SGS หน้า "บันทึกผลการเรียน…" / "บันทึกคุณลักษณะ…" / "บันทึกการอ่าน…" ของห้องนี้</li>
+        <li>กดบุ๊กมาร์ก ⭐ แล้ววาง (Ctrl+V) ในกล่องที่ขึ้นมา ตรวจการจับคู่คอลัมน์ แล้วกด "กรอก"</li>
+        <li>ตรวจช่องสีเหลือง แล้วกดปุ่มบันทึกของ SGS เอง</li></ol>
+      <p class="wrap"><button class="btn pri" data-act="sgsCopy" data-k="0">คัดลอก (จำนวนเต็ม)</button><button class="btn" data-act="sgsCopy" data-k="1">ทศนิยม 1</button><button class="btn" data-act="sgsCopy" data-k="2">ทศนิยม 2</button><button class="btn" data-act="mclose">ปิด</button></p>`);
+    $('#sgsBm').setAttribute('href', SGS_BM()); },
+  sgsBmCopy: () => copyText(SGS_BM(), 'คัดลอกโค้ดบุ๊กมาร์กแล้ว'),
+  sgsCopy: d => run(async () => { const data = await sgsData(+d.k); copyText('GBSGS1:' + JSON.stringify(data), `คัดลอกข้อมูล ${data.rows.length} คนแล้ว ไปวางในกล่องบน SGS`); }),
+  stuAutoSet: () => run(async () => { const v = $('#c_stuAuto').checked ? '1' : '0';
+    if (v === '1') { const i = await tapi('tStumisInfo'); if (!i.ready) { $('#c_stuAuto').checked = false; toast('ตั้งค่าบัญชี STUMIS ก่อน'); return; } }
+    await tapi('tCfg', { key: 'stuAuto', value: v }); T.boot.cfg.stuAuto = v; toast(v === '1' ? 'เปิดส่งอัตโนมัติแล้ว' : 'ปิดส่งอัตโนมัติแล้ว'); }),
+  stuSetup: () => run(async () => { const i = await tapi('tStumisInfo');
+    modal(`<h3>บัญชี STUMIS</h3><label for="suU">ชื่อผู้ใช้</label><input class="full" id="suU" value="${esc(i.user)}" autocomplete="off">
+      <label for="suP">รหัสผ่าน</label><input class="full" id="suP" type="password" autocomplete="new-password" placeholder="${i.ready ? 'เว้นว่าง = ใช้รหัสเดิม' : ''}">
+      <p class="mut">${i.ready ? 'ตั้งค่าแล้ว' : 'ยังไม่ได้ตั้งค่า'} · ${esc(i.url)}</p><div id="suRes"></div>
+      <p class="wrap"><button class="btn pri" data-act="stuCred">บันทึก</button><button class="btn" data-act="stuTest" ${i.ready ? '' : 'disabled'}>ทดสอบล็อกอิน</button><button class="btn" data-act="mclose">ปิด</button></p>`); }),
+  stuCred: () => run(async () => { const i = await tapi('tStumisCred', { user: $('#suU').value, pass: $('#suP').value }); $('#suP').value = ''; $('#suP').placeholder = 'เว้นว่าง = ใช้รหัสเดิม';
+    document.querySelector('[data-act="stuTest"]').disabled = !i.ready; toast('บันทึกแล้ว'); }),
+  stuTest: () => run(async () => { $('#suRes').innerHTML = '<p class="mut">กำลังล็อกอิน…</p>'; try { const r = await tapi('tStumisTest');
+    $('#suRes').innerHTML = `<p style="color:var(--ok)">ล็อกอินได้ เจอคาบในตารางสอน ${r.cells.length} ช่อง</p><small>${r.cells.map(c => esc(c.wan + ' ค.' + c.cab + ' ' + c.text)).join('<br>')}</small>`; }
+    catch(e){ $('#suRes').innerHTML = `<p class="warn">${esc(e.message)}</p>`; } }),
+  liveBack: () => { clearInterval(T.timer); T.tab = 'today'; tLoad(); },
+  p2: () => { T.showP2 = !T.showP2; draw(); },
+  setAtt: d => run(async () => {
+    const L = T.live; let a = L.att.find(x => x.studentId === d.stu);
+    if (!a) { a = { sessionId: L.session.sessionId, studentId: d.stu, s1:'', s2:'', src:'manual', time:'' }; L.att.push(a); }
+    const col = +d.k === 2 ? 's2' : 's1', old = a[col], nv = old === d.st ? '' : d.st;
+    a[col] = nv; if (col === 's1') a.src = 'manual'; $('#liveBody').innerHTML = liveBody();
+    T.pend = (T.pend || 0) + 1;
+    try { await tapi('tSetAtt', { sessionId: L.session.sessionId, studentId: d.stu, k: d.k, status: nv }, true); if (L.stu && !L.stu.dirty && T.live === L) { L.stu.dirty = true; draw(); } }
+    catch(e){ a[col] = old; $('#liveBody').innerHTML = liveBody(); throw e; }
+    finally { T.pend--; }
+  }),
+  fill: d => modal(`<h3>${esc(d.st)}ทั้งหมด</h3><p>ใส่ "${esc(d.st)}" ให้ใคร?</p>
+    <p class="wrap"><button class="btn pri" data-act="fillGo" data-st="${esc(d.st)}" data-all="0">เฉพาะคนที่ยังไม่เช็คชื่อ</button><button class="btn ${d.st === 'ขาด' ? 'dan' : ''}" data-act="fillGo" data-st="${esc(d.st)}" data-all="1">ทุกคน (ทับสถานะเดิม)</button></p>
+    <p><button class="btn sm" data-act="mclose">ยกเลิก</button></p>`),
+  fillGo: d => run(async () => { mclose(); const n = await tapi('tFill', { sessionId: T.live.session.sessionId, status: d.st, all: d.all === '1' }); toast('เปลี่ยน ' + n + ' คน'); await openLive(T.live.session.sessionId); }),
+  close: () => run(async () => { if (!(await ask('ปิดคาบ? คนที่ยังไม่เช็คชื่อจะเป็น "ขาด" (แก้ทีหลังได้)'))) return; await tapi('tClose', { sessionId: T.live.session.sessionId }); T.boot.open = T.boot.open.filter(x => x.sessionId !== T.live.session.sessionId); await openLive(T.live.session.sessionId); }),
+  reopen: () => run(async () => { await tapi('tReopen', { sessionId: T.live.session.sessionId }); await openLive(T.live.session.sessionId); T.boot.open = T.boot.open.filter(x => x.sessionId !== T.live.session.sessionId).concat(T.live.session); draw(); }),
+  span: () => run(async () => { const se = T.live.session; const d = await tapi('tSesUpdate', { sessionId: se.sessionId, fields: { span: +se.span === 2 ? 1 : 2 } }); T.live.session = d.session; draw(); }),
+  sesDel: () => run(async () => { if (!(await ask('ลบคาบนี้พร้อมข้อมูลเช็คชื่อทั้งหมด?', { danger: true, yes: 'ลบ' }))) return; await tapi('tSesDel', { sessionId: T.live.session.sessionId }); clearInterval(T.timer); T.tab = 'today'; await tLoad(); }),
+  exToggle: () => run(async () => {
+    const se = T.live.session, sel = $('#exItem').value, p = { sessionId: se.sessionId, fields: { exitQ: $('#exQ').value, exitOpen: se.exitOpen === '1' ? '0' : '1' } };
+    if (sel[0] === '+') p.makeItem = { cat: sel.slice(1), label: 'Exit ticket ' + fmtD(se.date) }; else p.fields.exitItemId = sel;
+    const d = await tapi('tSesUpdate', p); T.live.session = d.session; if (d.item) T.boot.items.push(d.item); draw();
+  }),
+  attLoad: () => run(attLoad),
+  cell: d => { const row = T.att.att.find(a => a.sessionId === d.id && a.studentId === d.stu) || {}, cur = +d.k === 2 ? (row.s2 || '') : (row.s1 || '');
+    modal(`<h3>แก้สถานะ${+d.k === 2 ? ' (คาบที่ 2 ของคาบคู่)' : ''}</h3><div class="wrap">${ST.map(s => `<button class="btn ${cur === s ? 'pri' : ''}" data-act="cellSet" data-id="${d.id}" data-stu="${esc(d.stu)}" data-k="${d.k}" data-st="${s}">${s}</button>`).join('')}
+      <button class="btn dan" data-act="cellSet" data-id="${d.id}" data-stu="${esc(d.stu)}" data-k="${d.k}" data-st="">${+d.k === 2 ? 'ตามคาบแรก' : 'ล้าง'}</button></div><p><button class="btn sm" data-act="mclose">ยกเลิก</button></p>`); },
+  cellSet: d => run(async () => { mclose(); await tapi('tSetAtt', { sessionId: d.id, studentId: d.stu, k: d.k, status: d.st });
+    let a = T.att.att.find(x => x.sessionId === d.id && x.studentId === d.stu); if (!a) { a = { sessionId: d.id, studentId: d.stu, s1:'', s2:'' }; T.att.att.push(a); }
+    a[+d.k === 2 ? 's2' : 's1'] = d.st; const se = T.att.sessions.find(x => x.sessionId === d.id); if (se && se.stu) se.stu.dirty = true; draw(); }),
+  retro: () => modal(`<h3>เพิ่มคาบย้อนหลัง — ${esc(grp(T.gid).label)}</h3><label>วันที่</label><input id="rD" type="date" value="${T.boot.today}"><label>คาบ</label><select id="rP">${perOpts()}</select>
+    <label>ประเภท</label><select id="rS"><option value="1">คาบเดี่ยว</option><option value="2">คาบคู่</option></select><p class="wrap"><button class="btn pri" data-act="retroSave">เพิ่ม</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`),
+  retroSave: () => run(async () => { const p = { groupId: T.gid, date: $('#rD').value, period: $('#rP').value, span: $('#rS').value, closed: true }; if (!p.date) return toast('เลือกวันที่'); mclose(); const se = await tapi('tOpen', p); await openLive(se.sessionId); }),
+  scLoad: () => run(scLoad),
+  item: d => openItem(d.id),
+  itemBack: () => { T.tab = 'score'; draw(); },
+  itemNew: () => modal(`<h3>เพิ่มช่องคะแนน — ${esc(subj(grp(T.gid).subjectId).name)}</h3><label>ชื่อช่อง</label><input class="full" id="nL" placeholder="เช่น ใบงานที่ 1, แล็บไทเทรต"><label>คะแนนเต็ม</label><input id="nM" type="number" inputmode="decimal" value="10" style="width:110px">
+    <label>หมวด</label><select id="nC">${CATS.map(c => `<option value="${c}">${CATN[c]}</option>`).join('')}</select><label>กำหนดส่ง (ไม่บังคับ)</label><input id="nD" type="date"><p class="wrap"><button class="btn pri" data-act="itemAdd">เพิ่ม</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`),
+  itemAdd: () => run(async () => { const it = await tapi('tItemSave', { subjectId: grp(T.gid).subjectId, label: $('#nL').value, max: $('#nM').value, cat: $('#nC').value, due: $('#nD').value }); mclose(); T.boot.items.push(it); openItem(it.itemId); }),
+  itemSave: () => run(async () => { const it = await tapi('tItemSave', { itemId: T.item, label: $('#itL').value, max: $('#itM').value, cat: $('#itC').value, due: $('#itD').value }); Object.assign(T.boot.items.find(i => i.itemId === T.item), it); toast('บันทึกแล้ว'); draw(); }),
+  itemMove: d => run(async () => { const it = T.boot.items.find(i => i.itemId === T.item), list = itemsOf(it.subjectId).filter(i => i.cat === it.cat), ix = list.indexOf(it), ot = list[ix + +d.d];
+    if (!ot) return toast('อยู่ริมสุดของหมวดแล้ว'); const a = it.ord, b = ot.ord === a ? String(+a + +d.d) : ot.ord;
+    await tapi('tItemSave', { itemId: it.itemId, label: it.label, max: it.max, cat: it.cat, ord: b }); await tapi('tItemSave', { itemId: ot.itemId, label: ot.label, max: ot.max, cat: ot.cat, ord: a }); it.ord = b; ot.ord = a; toast('เลื่อนแล้ว'); }),
+  itemDel: () => run(async () => { if (!(await ask('ลบช่องนี้และคะแนนทั้งหมดในช่อง (ทุกห้องที่ใช้รหัสวิชานี้)?', { danger: true, yes: 'ลบ' }))) return; await tapi('tItemDel', { itemId: T.item }); T.boot.items = T.boot.items.filter(i => i.itemId !== T.item); T.tab = 'score'; T.sg = null; draw(); await scLoad(); }),
+  subCyc: d => { const x = T.draft[d.stu]; x.sub = x.sub === '' || x.sub === 'รอ' ? 'ส่ง' : x.sub === 'ส่ง' ? 'ช้า' : ''; draw(); },
+  bulk: d => { const it = T.boot.items.find(i => i.itemId === T.item); Object.values(T.draft).forEach(x => { if ((d.m === 'sub' && !x.sub) || ((d.m === 'sub' || d.m === 'pend') && x.sub === 'รอ')) x.sub = 'ส่ง'; if (d.m === 'full' && x.sub && x.sub !== 'รอ' && x.score === '') x.score = String(it.max); if (d.m === 'zero' && !x.sub && x.score === '') x.score = '0'; }); draw(); },
+  scSave: () => run(async () => { const list = [];
+    Object.keys(T.draft).forEach(sid => { const d = T.draft[sid], x = scGet(T.item, sid) || { sub:'', score:'' }; if (d.sub !== (x.sub || '') || String(d.score) !== String(x.score == null ? '' : x.score)) list.push({ itemId: T.item, studentId: sid, sub: d.sub, score: d.score }); });
+    if (!list.length) return toast('ไม่มีการเปลี่ยนแปลง');
+    await tapi('tSetScores', { list }); list.forEach(e => T.sg.map[e.itemId + '|' + e.studentId] = { itemId: e.itemId, studentId: e.studentId, sub: e.sub, score: e.score === '' ? '' : String(+e.score) });
+    toast('บันทึก ' + list.length + ' รายการ'); T.tab = 'score'; draw(); }),
+  ttCell: d => { const x = T.boot.timetable.find(t => +t.day === +d.d && +t.period === +d.p) || {};
+    modal(`<h3>${DAYS[d.d]} คาบ ${d.p}</h3><label>กลุ่มเรียน</label><select class="full" id="tG"><option value="">(ว่าง)</option>${T.boot.groups.map(g => `<option value="${g.groupId}" ${g.groupId === x.groupId ? 'selected' : ''}>${esc(g.label)}</option>`).join('')}</select>
+    <label>ประเภท</label><select id="tS"><option value="1">คาบเดี่ยว</option><option value="2" ${+x.span === 2 ? 'selected' : ''}>คาบคู่ (ต่อคาบถัดไป)</option></select>
+    <p class="wrap"><button class="btn pri" data-act="ttSave" data-d="${d.d}" data-p="${d.p}">บันทึก</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`); },
+  ttSave: d => run(async () => { const p = { day: d.d, period: d.p, groupId: $('#tG').value, span: $('#tS').value }; mclose(); await tapi('tTTSave', p);
+    T.boot.timetable = T.boot.timetable.filter(t => !(+t.day === +d.d && +t.period === +d.p)); if (p.groupId) T.boot.timetable.push({ day: String(d.d), period: String(d.p), groupId: p.groupId, span: p.span }); draw(); }),
+  subSave: d => run(async () => { const g = k => $('#' + k + '_' + d.id).value; const s = await tapi('tSubjectSave', { subjectId: d.id, code: g('sc'), name: g('sn'), wPre: g('wPre'), wMid: g('wMid'), wPost: g('wPost'), wFinal: g('wFinal'), wMode: g('wMode') });
+    Object.assign(subj(d.id), s); const sum = +s.wPre + +s.wMid + +s.wPost + +s.wFinal; toast(sum === 100 ? 'บันทึกแล้ว' : 'บันทึกแล้ว (สัดส่วนรวม ' + sum + ' ไม่ใช่ 100)'); draw(); }),
+  stuReset: d => run(async () => { if (!(await ask(d.w === 'pin' ? 'รีเซ็ตรหัส 4 หลัก (นักเรียนต้องลงทะเบียนใหม่)?' : 'ยกเลิกการผูกเครื่อง?'))) return; await tapi('tStuReset', { studentId: d.stu, what: d.w }); toast('รีเซ็ตแล้ว'); await tLoad(); }),
+  cfgSave: () => run(async () => { const v = { lateMin: $('#c_lateMin').value, gradeCut: $('#c_gradeCut').value, msPct: $('#c_msPct').value, rPct: $('#c_rPct').value,
+    presentAs: [...document.querySelectorAll('.c_pres:checked')].map(x => x.value).join(','), showGrade: $('#c_showGrade').checked ? '1' : '0', charList: $('#c_charList').value.trim(), rtwList: $('#c_rtwList').value.trim() };
+    if (!T.boot.cfg.charList && v.charList === TRDEF.char.join('\n')) delete v.charList; if (!T.boot.cfg.rtwList && v.rtwList === TRDEF.rtw.join('\n')) delete v.rtwList; T.tg = null;
+    for (const k of Object.keys(v)) if (String(T.boot.cfg[k]) !== String(v[k])) { await tapi('tCfg', { key: k, value: v[k] }); T.boot.cfg[k] = v[k]; } toast('บันทึกแล้ว'); draw(); }),
+  passSave: () => run(async () => { const d = await tapi('tCfg', { key: 'teacherPass', value: $('#c_pass').value }); LS.set('tt', d.t); toast('เปลี่ยนรหัสผ่านแล้ว'); draw(); }),
+  askY: () => { let v = true; if (askOpt.pass) { v = $('#askP').value; if (!v) return toast('ใส่รหัสผ่านก่อน'); } const r = askRes; askRes = null; mclose(); if (r) r(v); },
+  sc1: d => { const it = T.boot.items.find(i => i.itemId === d.id), st = T.boot.students.find(x => x.studentId === d.stu), x = scGet(d.id, d.stu) || {};
+    modal(`<h3>${esc(st.name)}</h3><p>${esc(it.label)} <small>เต็ม ${esc(it.max)}</small></p><label>สถานะส่งงาน</label>
+    <select id="e1S">${[['', 'ยังไม่ส่ง'], ['รอ', 'รอยืนยัน (นักเรียนกดส่งเอง)'], ['ส่ง', 'ส่งแล้ว'], ['ช้า', 'ส่งช้า']].map(o => `<option value="${o[0]}" ${(x.sub || '') === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select>
+    ${(T.sg.fmap[d.id + '|' + d.stu] || []).length ? '<label>รูปที่แนบ</label><div class="ths">' + T.sg.fmap[d.id + '|' + d.stu].map(f => thumb(f)).join('') + '</div>' : ''}
+    <label>คะแนน (เว้นว่าง = ยังไม่ให้คะแนน)</label><input id="e1V" type="number" inputmode="decimal" min="0" max="${esc(it.max)}" step="any" value="${esc(x.score == null ? '' : x.score)}" style="width:120px">
+    <p class="wrap"><button class="btn pri" data-act="sc1Save" data-id="${d.id}" data-stu="${esc(d.stu)}">บันทึก</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`); },
+  sc1Save: d => run(async () => { const e = { itemId: d.id, studentId: d.stu, sub: $('#e1S').value, score: $('#e1V').value.trim() };
+    await tapi('tSetScores', { list: [e] }); mclose();
+    T.sg.map[e.itemId + '|' + e.studentId] = { itemId: e.itemId, studentId: e.studentId, sub: e.sub, score: e.score === '' ? '' : String(+e.score) }; toast('บันทึกแล้ว'); draw(); }),
+  imgView: d => imgView(d.id),
+  tFiles: d => modal(`<h3>${esc((T.boot.students.find(x => x.studentId === d.stu) || {}).name || '')}</h3><div class="ths">${(T.sg.fmap[T.item + '|' + d.stu] || []).map(f => `<img class="qimg" style="max-height:60vh" data-fid="${esc(f)}" alt="รูปแนบ">`).join('')}</div><p><button class="btn" data-act="mclose">ปิด</button></p>`),
+  qzToggle: () => run(async () => { const se = T.live.session, on = se.quizOpen === '1', id = on ? se.quizId : $('#qzSel').value;
+    if (!on && !(await ask('เปิดควิซให้นักเรียนในคาบนี้ทำ? นักเรียนทำได้คนละ 1 ครั้ง', { yes: 'เปิดควิซ' }))) return;
+    const d = await tapi('tSesUpdate', { sessionId: se.sessionId, fields: { quizId: id, quizOpen: on ? '0' : '1' } }); T.live.session = d.session; draw(); }),
+  qzNew: () => { const sid = $('#qsub').value; T.qz = { subjectId: sid, title: '', cat: 'pre', timeLimit: 15, qs: [{ id: qid(), type: 'mc', q: '', pts: 1, img: '', choices: ['', '', '', ''], ans: '' }] }; T.more = 'qedit'; draw(); },
+  qzEdit: d => { const q = T.quizzes.find(x => x.quizId === d.id), it = T.boot.items.find(i => i.itemId === q.itemId);
+    T.qz = JSON.parse(JSON.stringify({ quizId: q.quizId, subjectId: q.subjectId, title: q.title, cat: it ? it.cat : 'pre', timeLimit: q.timeLimit, qs: q.qs }));
+    T.qz.qs.forEach(x => { if (x.type === 'short') x.ans = [].concat(x.ans).join(' | '); }); T.more = 'qedit'; draw(); },
+  qzDel: d => run(async () => { const q = T.quizzes.find(x => x.quizId === d.id);
+    if (!(await ask(`ลบควิซ "${q.title}" และคำตอบของนักเรียน ${q.done} คน? (คะแนนที่ลงในช่องคะแนนแล้วยังอยู่)`, { danger: true, yes: 'ลบ' }))) return;
+    await tapi('tQuizDel', { quizId: d.id }); T.quizzes = await tapi('tQuizList'); toast('ลบแล้ว'); draw(); }),
+  qAdd: d => { const q = { id: qid(), type: d.t, q: '', pts: 1, img: '' }; if (d.t === 'mc') Object.assign(q, { choices: ['', '', '', ''], ans: '' }); if (d.t === 'tf') q.ans = ''; if (d.t === 'num') Object.assign(q, { ans: '', tol: 1, unit: '' }); if (d.t === 'short') q.ans = '';
+    T.qz.qs.push(q); draw(); const t = document.querySelectorAll('textarea[data-qk="q"]'); if (t.length) t[t.length - 1].focus(); },
+  qDel: d => { T.qz.qs.splice(+d.i, 1); draw(); },
+  qMv: d => { const a = T.qz.qs, i = +d.i, j = i + +d.d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; draw(); },
+  chAdd: d => { const q = T.qz.qs[+d.i]; if (q.choices.length >= 8) return toast('สูงสุด 8 ตัวเลือก'); q.choices.push(''); draw(); },
+  chDel: d => { const q = T.qz.qs[+d.i], ci = +d.ci; if (q.choices.length <= 2) return toast('ต้องมีอย่างน้อย 2 ตัวเลือก'); q.choices.splice(ci, 1);
+    if (String(q.ans) === String(ci)) q.ans = ''; else if (+q.ans > ci) q.ans = +q.ans - 1; draw(); },
+  qImgDel: d => { T.qz.qs[+d.i].img = ''; draw(); },
+  qImp: () => modal(`<h3>วางข้อสอบจากข้อความ</h3><textarea class="full" id="impT" rows="9" placeholder="วางข้อสอบที่นี่"></textarea>
+    <p class="wrap"><button class="btn pri" data-act="qImpGo">แปลงเป็นข้อสอบ</button><button class="btn" data-act="mclose">ยกเลิก</button></p>
+    <details><summary>คำสั่งสำหรับให้ AI ออกข้อสอบ (คัดลอกไปวางใน Claude)</summary><pre class="prompt" id="aiP">${esc(AI_PROMPT)}</pre><button class="btn sm" data-act="aiCopy">คัดลอกคำสั่ง</button></details>`),
+  aiCopy: () => { try { navigator.clipboard.writeText(AI_PROMPT).then(() => toast('คัดลอกแล้ว'), () => toast('คัดลอกไม่ได้ ให้กดค้างที่ข้อความแล้วคัดลอกเอง')); } catch(e){ toast('คัดลอกไม่ได้ ให้กดค้างที่ข้อความแล้วคัดลอกเอง'); } },
+  qImpGo: () => { const qs = parseQuiz($('#impT').value); if (!qs.length) return toast('ไม่พบข้อสอบ ตรวจรูปแบบอีกครั้ง (ขึ้นต้นด้วย 1. 2. 3.)');
+    T.qz.qs = T.qz.qs.filter(q => q.q.trim() || q.img).concat(qs); mclose(); const nk = qs.filter(q => q.type === 'mc' && q.ans === '').length;
+    toast('เพิ่ม ' + qs.length + ' ข้อ' + (nk ? ' · ' + nk + ' ข้อยังไม่ได้เลือกคำตอบ' : '')); draw(); },
+  qzSave: () => run(async () => { const r = await tapi('tQuizSave', { quiz: T.qz }); [T.quizzes, T.boot] = await Promise.all([tapi('tQuizList'), tapi('tBoot')]); T.qsub = T.qz.subjectId; T.more = 'quiz'; toast('บันทึกควิซแล้ว'); draw(); }),
+  qzRes: d => run(async () => { if (!T.qr || T.qr.quiz.quizId !== d.id) T.qrg = ''; if (!T.quizzes) T.quizzes = await tapi('tQuizList'); const quiz = T.quizzes.find(x => x.quizId === d.id); clearInterval(T.timer);
+    T.qr = Object.assign({ quiz }, await tapi('tQuizResults', { quizId: d.id })); T.tab = 'more'; T.more = 'qres'; draw(); }),
+  qzRefresh: () => TA.qzRes({ id: T.qr.quiz.quizId }),
+  qzAns: d => vAnsModal(d.stu),
+  qrg: d => { T.qrg = d.g; draw(); },
+  qzGrade: d => run(async () => { const v = $('#mg_' + d.q).value; const sc = await tapi('tQuizGrade', { quizId: T.qr.quiz.quizId, studentId: d.stu, qid: d.q, pts: v });
+    const r = T.qr.rows.find(x => x.studentId === d.stu); r.score = sc; r.detail.find(x => x.id === d.q).got = v === '' ? null : +v; toast('บันทึกแล้ว'); draw(); vAnsModal(d.stu); }),
+  qzReset: d => run(async () => { if (!(await ask('ลบคำตอบของนักเรียนคนนี้ให้ทำควิซใหม่ได้? (ต้องเปิดควิซในคาบอีกครั้ง)', { danger: true, yes: 'ให้ทำใหม่' }))) return;
+    await tapi('tQuizReset', { quizId: T.qr.quiz.quizId, studentId: d.stu }); await TA.qzRes({ id: T.qr.quiz.quizId }); }),
+  qzRegrade: () => run(async () => { const n = await tapi('tQuizRegrade', { quizId: T.qr.quiz.quizId }); toast('ตรวจใหม่ ' + n + ' คน'); await TA.qzRes({ id: T.qr.quiz.quizId }); }),
+  hlive: d => run(() => openLive(d.id)),
+  sview: d => { T.sview = d.v; if (d.v === 'trait' && T.sg && grp(T.gid) && (!T.tg || T.tg.gid !== T.gid)) return run(async () => { await trLoad(); draw(); }); draw(); },
+  trLoad: () => run(async () => { await trLoad(); draw(); }),
+  tkind: d => { T.tkind = d.v; draw(); },
+  trFill: d => { const k = T.tkind || 'char'; let n = 0;
+    stuOf(grp(T.gid)).forEach(s => trVals(s.studentId, k).forEach((v, i) => { if (v === '') { T.tdraft[k + '|' + s.studentId + '|' + i] = d.v; n++; } }));
+    toast(n ? 'เติม ' + n + ' ช่อง ยังไม่บันทึก' : 'ไม่มีช่องว่าง'); draw(); },
+  trSave: () => run(async () => { const g = grp(T.gid), by = {};
+    Object.keys(T.tdraft).forEach(key => { const k = key.split('|')[0], i = key.lastIndexOf('|'); (by[k] = by[k] || []).push({ studentId: key.slice(k.length + 1, i), idx: +key.slice(i + 1), val: T.tdraft[key] }); });
+    for (const k of Object.keys(by)) await tapi('tTraitSet', { subjectId: g.subjectId, kind: k, list: by[k] });
+    Object.keys(T.tdraft).forEach(key => T.tg.map[key] = T.tdraft[key]); T.tdraft = {}; toast('บันทึกแล้ว'); draw(); }),
+  expStumis: () => modal(`<h3>คัดลอกคะแนนสรุป — ${esc(grp(T.gid).label)}</h3><p>ได้ตารางแยกด้วย Tab: เลขที่ · เลขประจำตัว · ชื่อ · ก่อนกลาง · กลาง · หลังกลาง · ปลาย · รวม · เกรด · คุณลักษณะ · อ่านคิดเขียน วางลง Excel/Google Sheets ได้ทันที</p>
+    <p class="mut">ใน STUMIS (ตั้งสัดส่วนคะแนน) ใส่สัดส่วนหมวดไว้ช่องที่ 1 ของแต่ละหมวด แล้วกรอกคะแนนสุทธิหมวดจากตารางนี้</p>
+    <p class="wrap"><button class="btn pri" data-act="expGo" data-k="2">ทศนิยม 2 ตำแหน่ง</button><button class="btn" data-act="expGo" data-k="1">ทศนิยม 1 ตำแหน่ง</button><button class="btn" data-act="expGo" data-k="0">ปัดเป็นจำนวนเต็ม</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`),
+  expGo: d => run(async () => { mclose(); const g = grp(T.gid); if (!g) return; if (!T.sg) await scLoad(); if (!T.tg || T.tg.gid !== T.gid) await trLoad();
+    const sb = subj(g.subjectId), its = itemsOf(sb.subjectId), dp = +d.k, f = 10 ** dp, r = x => Math.round(x * f) / f;
+    const lv = (sid, k) => { const x = trLevel(trVals(sid, k, true)); return x ? x.level : ''; };
+    const rows = [['เลขที่', 'เลขประจำตัว', 'ชื่อ'].concat(CATS.map(c => CATS_S[c] + ' (' + sb['w' + c[0].toUpperCase() + c.slice(1)] + ')'), ['รวม', 'เกรด', 'คุณลักษณะ', 'อ่านคิดเขียน'])];
+    stuOf(g).forEach(s => { const net = calcNet(sb, its, iid => scGet(iid, s.studentId)), cs = CATS.map(c => r(net.cats[c].net)), tot = r(cs.reduce((a, b) => a + b, 0));
+      rows.push([s.no, s.studentId, s.name].concat(cs.map(x => x.toFixed(dp)), [tot.toFixed(dp), grade(tot, T.boot.cfg), lv(s.studentId, 'char'), lv(s.studentId, 'rtw')])); });
+    copyText(rows.map(x => x.join('\t')).join('\n'), 'คัดลอกแล้ว ' + (rows.length - 1) + ' คน วางใน Excel/Sheets ได้เลย'); }),
+  goTrack: d => run(async () => { clearInterval(T.timer); if (d.g) T.gid = d.g; T.tab = 'score'; T.sview = 'track'; T.sg = null; draw(); if (grp(T.gid)) await scLoad(); }),
+  copyMiss: d => { const g = grp(T.gid), R = trackOf(g), t = R.tasks.find(x => x.it.itemId === d.id);
+    copyText(`${(subj(g.subjectId) || {}).name || ''} ${g.label} · ${t.it.label}${t.it.due ? ' (ส่ง ' + thShort(t.it.due) + ')' : ''}\nยังไม่ส่ง ${t.miss.length} คน\n` + t.miss.map(s => `${s.no}. ${s.name}`).join('\n')); },
+  copyOweAll: () => { const g = grp(T.gid), R = trackOf(g), done = R.studs.length - R.all.length, n = R.all.reduce((a, o) => a + o.items.length, 0);
+    copyText(`${(subj(g.subjectId) || {}).name || ''} ${g.label} · สรุปงานที่ยังไม่ส่งทั้งหมด (${thShort(R.today)})\n${R.all.length} คน รวม ${n} งาน · ส่งครบแล้ว ${done} คน · * = เลยกำหนด\n`
+      + R.all.map(o => `${o.s.no}. ${o.s.name} (${o.items.length}) — ${o.items.join(', ')}`).join('\n'), 'คัดลอกงานค้างทั้งหมด ' + R.all.length + ' คนแล้ว'); },
+  copyOwe: () => { const g = grp(T.gid), R = trackOf(g);
+    copyText(`${(subj(g.subjectId) || {}).name || ''} ${g.label} · งานค้างส่ง (${thShort(R.today)})\n` + R.owe.map(o => `${o.s.no}. ${o.s.name} — ${o.items.join(', ')}`).join('\n')); },
+  stu: d => run(() => openStu(d.stu)),
+  stuBack: () => run(async () => { T.tab = T.stuFrom || 'score';
+    if (T.tab === 'today') return tLoad(); if (T.tab === 'score') { T.sg = null; draw(); return grp(T.gid) ? scLoad() : null; } if (T.tab === 'att') { T.att = null; draw(); return attLoad(); } draw(); }),
+  stuEdit: d => { const s = T.boot.students.find(x => x.studentId === d.stu); stuForm(s, false); },
+  stuAdd: () => stuForm(null, true),
+  stuSave: d => run(async () => {
+    const p = { studentId: $('#fId').value.trim(), name: $('#fName').value, nick: $('#fNick').value, room: $('#fRoom').value, no: $('#fNo').value, active: $('#fAct').checked, isNew: d.new === '1' };
+    await tapi('tStuSave', p); mclose(); toast('บันทึกแล้ว'); T.boot = await tapi('tBoot');
+    if (T.tab === 'stu') await openStu(p.studentId); else draw(); }),
+  psEdit: d => { const sb = T.stu.subjects.find(x => x.items.some(i => i.itemId === d.id)), it = sb.items.find(i => i.itemId === d.id);
+    modal(`<h3>${esc(T.stu.me.name)}</h3><p>${esc(it.label)} <small>เต็ม ${esc(it.max)}${it.due ? ' · ส่ง ' + thShort(it.due) : ''}${it.subAt ? ' · กดส่ง ' + thShort(it.subAt) : ''}</small></p>
+    ${it.files.length ? '<div class="ths">' + it.files.map(f => thumb(f)).join('') + '</div>' : ''}
+    <label>สถานะส่งงาน</label><select id="e1S">${[['', 'ยังไม่ส่ง'], ['รอ', 'รอยืนยัน'], ['ส่ง', 'ส่งแล้ว'], ['ช้า', 'ส่งช้า']].map(o => `<option value="${o[0]}" ${it.sub === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select>
+    <label>คะแนน (เว้นว่าง = ยังไม่ให้คะแนน)</label><input id="e1V" type="number" inputmode="decimal" min="0" max="${esc(it.max)}" step="any" value="${esc(it.score)}" style="width:120px">
+    <p class="wrap"><button class="btn pri" data-act="psSave" data-id="${d.id}">บันทึก</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`); },
+  psSave: d => run(async () => { await tapi('tSetScores', { list: [{ itemId: d.id, studentId: T.stu.me.studentId, sub: $('#e1S').value, score: $('#e1V').value.trim() }] }); mclose(); toast('บันทึกแล้ว'); await openStu(T.stu.me.studentId); }),
+  psAtt: d => { const sb = T.stu.subjects.find(x => x.recent.some(r => r.sessionId === d.id)), r = sb.recent.find(x => x.sessionId === d.id), k = +d.k === 2 ? 2 : 1, cur = k === 2 ? (r.s2 || r.s1) : r.s1;
+    modal(`<h3>${esc(T.stu.me.name)}</h3><p>${esc(sb.label)} · ${thShort(r.date)} คาบ ${+r.period ? +r.period + k - 1 : '-'}${+r.span === 2 ? ` <small class="mut">(คาบ${k === 1 ? 'แรก' : 'ที่ 2'}ของคาบคู่)</small>` : ''}</p>
+    <div class="wrap">${ST.map(x => `<button class="btn ${cur === x ? 'pri' : ''}" data-act="psAttSet" data-id="${d.id}" data-k="${k}" data-st="${x}">${x}</button>`).join('')}</div><p><button class="btn sm" data-act="mclose">ยกเลิก</button></p>`); },
+  psAttSet: d => run(async () => { await tapi('tSetAtt', { sessionId: d.id, studentId: T.stu.me.studentId, k: +d.k === 2 ? 2 : 1, status: d.st }); mclose(); toast('บันทึกแล้ว'); await openStu(T.stu.me.studentId); }),
+  klist: d => { T.sview = 'list'; T.klist = d.k; draw(); },
+  kOk: d => run(async () => { await tapi('tSetScores', { list: [{ itemId: d.id, studentId: d.stu, sub: 'ส่ง' }] }); await scLoad(); toast('ยืนยันแล้ว'); }),
+  ordOpen: () => { const g = grp(T.gid), it = T.tab === 'item' && T.item ? T.boot.items.find(i => i.itemId === T.item) : null, sid = it ? it.subjectId : g.subjectId;
+    T.ordSub = sid; T.ord = {}; CATS.forEach(c => T.ord[c] = itemsOf(sid).filter(i => i.cat === c).map(i => i.itemId));
+    modal(`<h3>จัดลำดับงาน — ${esc((subj(sid) || {}).name || '')}</h3><p class="mut" style="margin:0">กดแช่ที่ ⋮⋮ แล้วลากขึ้น-ลง หรือกดลูกศร ลำดับนี้ใช้ทั้งการ์ดตามงานและตารางคะแนน</p><p id="ordPos" style="min-height:1.4em;font-weight:600;color:var(--pri);margin:6px 0"></p>
+      <div id="ordBox">${ordHtml()}</div><p class="wrap"><button class="btn pri" data-act="ordSave">บันทึกลำดับ</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`);
+    if (it && T.ord[it.cat].length > 1) $('#ordPos').textContent = ordPos(it.cat, T.ord[it.cat].indexOf(it.itemId)); },
+  ordMv: d => { const a = T.ord[d.c], i = +d.i, j = i + +d.d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; ordDraw(d.c, j); },
+  ordSave: () => run(async () => { const ids = CATS.flatMap(c => T.ord[c] || []); await tapi('tItemOrder', { ids });
+    CATS.forEach(c => (T.ord[c] || []).forEach((id, k) => { const it = T.boot.items.find(x => x.itemId === id); if (it) it.ord = String(k + 1); })); mclose(); toast('บันทึกลำดับแล้ว'); draw(); }),
+  tsort: d => { T.tsort = d.v; draw(); },
+  goReq: () => { T.tab = 'more'; T.more = 'stu'; draw(); },
+  reqOk: d => run(async () => { await tapi('tStuReset', { studentId: d.stu, what: 'pin' }); T.boot = await tapi('tBoot'); toast('รีเซ็ตแล้ว นักเรียนตั้งรหัสใหม่ได้'); draw(); }),
+  reqNo: d => run(async () => { await tapi('tStuReset', { studentId: d.stu, what: 'deny' }); T.boot = await tapi('tBoot'); draw(); }),
+  undo: d => run(async () => { const l = T.log.find(x => x.id === d.id);
+    if (!(await ask(`เรียกคืน "${l.what}" ${l.key} กลับเป็น: ${l.old || '(ว่าง)'}`, { title: 'เรียกคืนค่าเดิม', yes: 'เรียกคืน' }))) return;
+    await tapi('tUndo', { id: d.id }); T.log = await tapi('tLog'); T.boot = await tapi('tBoot'); draw(); }),
+  copyLive: () => { const L = T.live, se = L.session, g = grp(se.groupId), studs = stuOf(g), am = {}; L.att.forEach(a => am[a.studentId] = a);
+    const by = {}; studs.forEach(s => { const st = (am[s.studentId] || {}).s1 || 'ยังไม่เช็ค'; (by[st] = by[st] || []).push(s); });
+    copyText(`${g.label} ${(subj(g.subjectId) || {}).name || ''} · ${thShort(se.date)} คาบ ${perTxt(se)}\nมา ${(by['มา'] || []).length + (by['สาย'] || []).length + (by['กิจกรรม'] || []).length}/${studs.length} คน\n` +
+      ['ขาด', 'ลา', 'สาย', 'กิจกรรม', 'ยังไม่เช็ค'].filter(k => by[k]).map(k => `${k} (${by[k].length}): ` + by[k].map(s => s.no + '. ' + s.name + (s.nick ? ' (' + s.nick + ')' : '')).join(', ')).join('\n')); },
+  copyAtt: () => modal(`<h3>คัดลอกรายชื่อ — ${esc(grp(T.gid).label)}</h3><p class="wrap"><button class="btn" data-act="copyAttGo" data-k="ms">เสี่ยง มส. (ต่ำกว่า ${MS()}%)</button><button class="btn" data-act="copyAttGo" data-k="all">ตารางทั้งหมด (วางใน Excel/Sheets)</button></p><p><button class="btn sm" data-act="mclose">ปิด</button></p>`),
+  copyAttGo: d => { const g = grp(T.gid), studs = stuOf(g), ss = T.att.sessions, by = {}; T.att.att.forEach(a => (by[a.studentId] = by[a.studentId] || {})[a.sessionId] = a);
+    mclose();
+    if (d.k === 'ms') { const low = studs.map(s => ({ s, sm: attSum(ss, by[s.studentId] || {}) })).filter(x => x.sm.pct != null && x.sm.pct < MS());
+      return copyText(`${g.label} ${(subj(g.subjectId) || {}).name || ''} · เสี่ยง มส. (เวลาเรียน < ${MS()}%) ${low.length} คน\n` + low.map(x => `${x.s.no}. ${x.s.name} — ${x.sm.pct}% (ขาด ${x.sm.c['ขาด']} ลา ${x.sm.c['ลา']})`).join('\n')); }
+    const head = ['เลขที่', 'ชื่อ'].concat(ss.map(se => fmtD(se.date) + ' ค.' + se.period), ['มา%'], ST);
+    copyText([head.join('\t')].concat(studs.map(s => { const am = by[s.studentId] || {}, sm = attSum(ss, am);
+      return [s.no, s.name].concat(ss.map(se => { const a = am[se.sessionId]; return a && a.s1 ? a.s1 : se.state === 'closed' ? 'ขาด' : ''; }), [sm.pct == null ? '' : sm.pct], ST.map(x => sm.c[x])).join('\t'); })).join('\n')); },
+  hideAll: d => run(async () => { const sid = grp(T.gid).subjectId; await tapi('tItemHide', { subjectId: sid, hide: d.h === '1' });
+    T.boot.items.forEach(i => { if (i.subjectId === sid) i.hide = d.h; }); toast(d.h === '1' ? 'ซ่อนคะแนนแล้ว (นักเรียนยังเห็นสถานะส่ง)' : 'นักเรียนเห็นคะแนนแล้ว'); draw(); }),
+  hide1: () => run(async () => { const it = T.boot.items.find(i => i.itemId === T.item), h = it.hide !== '1'; await tapi('tItemHide', { itemId: it.itemId, hide: h }); it.hide = h ? '1' : '0'; toast(h ? 'ซ่อนคะแนนช่องนี้แล้ว' : 'ประกาศคะแนนแล้ว'); draw(); }),
+  pendAll: () => run(async () => { const list = pendList().map(x => ({ itemId: x.itemId, studentId: x.studentId, sub: 'ส่ง' }));
+    await tapi('tSetScores', { list }); list.forEach(e => T.sg.map[e.itemId + '|' + e.studentId].sub = 'ส่ง'); toast('ยืนยัน ' + list.length + ' รายการ'); draw(); }),
+  ptime: () => { const c = T.boot.cfg, P = +c.periods || 9, st = String(c.dayStart || '08:30').split(':');
+    const opt = (arr, cur, f) => arr.map(v => `<option value="${v}" ${String(v) === String(cur) ? 'selected' : ''}>${f ? f(v) : v}</option>`).join('');
+    const r5 = (a, b) => { const o = []; for (let v = a; v <= b; v += 5) o.push(v); return o; };
+    modal(`<h3>ตั้งเวลาคาบ</h3><p class="mut" style="margin-top:0">ปรับทีละ 5 นาที เวลาของทุกคาบคำนวณให้เอง</p>
+    <div class="wrap"><div><label>เริ่มคาบแรก</label><span class="wrap" style="gap:4px"><select id="pH" aria-label="ชั่วโมง">${opt([6,7,8,9,10,11,12,13], +st[0], v => String(v).padStart(2, '0'))}</select>:<select id="pMi" aria-label="นาที">${opt(r5(0, 55), +st[1], v => String(v).padStart(2, '0'))}</select></span></div>
+    <div><label>นาทีต่อคาบ</label><select id="pL">${opt(r5(20, 120), +c.periodMin || 50)}</select></div>
+    <div><label>จำนวนคาบ/วัน</label><select id="pN">${opt(Array.from({ length: 15 }, (_, i) => i + 1), P)}</select></div></div>
+    <div class="wrap"><div><label>พักกลางวัน</label><select id="pB"><option value="">ไม่มี</option>${Array.from({ length: P - 1 }, (_, i) => `<option value="${i + 1}" ${+c.breakAfter === i + 1 ? 'selected' : ''}>หลังคาบ ${i + 1}</option>`).join('')}</select></div>
+    <div><label>พักกี่นาที</label><select id="pM">${opt(r5(5, 120), +c.breakMin || 60)}</select></div></div>
+    <p class="mut">นาทีต่อคาบใช้ตัดสินเวลาปิดคาบอัตโนมัติด้วย (คาบเดี่ยว = นาทีต่อคาบ + 10 นาที)</p>
+    <p class="wrap"><button class="btn pri" data-act="ptimeSave">บันทึก</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`); },
+  ptimeSave: () => run(async () => {
+    const v = { dayStart: String($('#pH').value).padStart(2, '0') + ':' + String($('#pMi').value).padStart(2, '0'), periodMin: $('#pL').value, periods: $('#pN').value, breakAfter: $('#pB').value, breakMin: $('#pB').value ? $('#pM').value : '' };
+    if (!/^\d{2}:\d{2}$/.test(v.dayStart)) return toast('ใส่เวลาเริ่มก่อน');
+    if (!(+v.periodMin >= 10 && +v.periodMin <= 180)) return toast('นาทีต่อคาบต้องอยู่ระหว่าง 10–180');
+    if (!(+v.periods >= 1 && +v.periods <= 15)) return toast('จำนวนคาบต้องอยู่ระหว่าง 1–15');
+    if (+v.breakAfter >= +v.periods) v.breakAfter = '';
+    mclose();
+    for (const k of Object.keys(v)) if (String(T.boot.cfg[k] || '') !== String(v[k])) { await tapi('tCfg', { key: k, value: v[k] }); T.boot.cfg[k] = v[k]; }
+    toast('บันทึกแล้ว'); draw(); }),
+  pCount: d => run(async () => { const P = Math.max(1, Math.min(15, (+T.boot.cfg.periods || 9) + +d.d)); await tapi('tCfg', { key: 'periods', value: P }); T.boot.cfg.periods = String(P); draw(); }),
+  subNew: () => modal(`<h3>เพิ่มวิชา</h3><label>รหัสวิชา</label><input class="full" id="aC"><label>ชื่อวิชา</label><input class="full" id="aN"><label>ห้องที่สอน</label><input class="full" id="aR" placeholder="เช่น 5/1, 5/2, 4/4+4/5">
+    <p class="mut">คั่นด้วย , = แยกห้อง · ใช้ + = หลายห้องเรียนพร้อมกันในคาบเดียว<br>สัดส่วนเริ่มต้น 25:20:25:30 แก้ทีหลังได้</p><p class="wrap"><button class="btn pri" data-act="subAdd">เพิ่ม</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`),
+  subAdd: () => run(async () => { await tapi('tSubjectAdd', { code: $('#aC').value, name: $('#aN').value, rooms: $('#aR').value }); mclose(); toast('เพิ่มวิชาแล้ว'); await tLoad(); }),
+  subDel: d => run(async () => { const sb = subj(d.id), n = T.boot.groups.filter(g => g.subjectId === d.id).length;
+    const pass = await ask(`ลบวิชา "${sb.name}" พร้อมห้องเรียน ${n} กลุ่ม ช่องคะแนน คะแนน และข้อมูลเช็คชื่อทั้งหมดของวิชานี้ — กู้คืนไม่ได้`, { title: 'ลบวิชา', pass: true, danger: true, yes: 'ลบถาวร' });
+    if (!pass) return; await tapi('tSubjectDel', { subjectId: d.id, pass }); toast('ลบวิชาแล้ว'); T.att = null; T.sg = null; await tLoad(); }),
+  grpNew: d => modal(`<h3>เพิ่มห้อง — ${esc(subj(d.id).name)}</h3><label>ห้อง</label><input class="full" id="gR" placeholder="เช่น 5/3 หรือ 4/4+4/5"><p class="mut">ใช้ + ถ้าหลายห้องเรียนพร้อมกันในคาบเดียว · ใช้ , ถ้าเพิ่มหลายห้องแยกกัน</p>
+    <p class="wrap"><button class="btn pri" data-act="grpAdd" data-id="${d.id}">เพิ่ม</button><button class="btn" data-act="mclose">ยกเลิก</button></p>`),
+  grpAdd: d => run(async () => { await tapi('tGroupAdd', { subjectId: d.id, rooms: $('#gR').value }); mclose(); toast('เพิ่มห้องแล้ว'); await tLoad(); }),
+  grpDel: d => run(async () => { const g = grp(d.id);
+    const pass = await ask(`ลบ ${g.label} ออกจากวิชานี้ พร้อมคาบเรียน ตารางสอน และข้อมูลเช็คชื่อของห้องนี้ — กู้คืนไม่ได้ (คะแนนของนักเรียนยังอยู่)`, { title: 'ลบห้องเรียน', pass: true, danger: true, yes: 'ลบถาวร' });
+    if (!pass) return; await tapi('tGroupDel', { groupId: d.id, pass }); toast('ลบแล้ว'); T.att = null; T.sg = null; await tLoad(); }),
+  mclose: () => mclose()
+};
+
+/* =================== เริ่มทำงาน =================== */
+const BUSY = new Set();
+function draw(){ document.body.classList.toggle('mode-T', MODE === 'T'); document.body.classList.toggle('mode-S', MODE !== 'T'); drawHeader(); $('#app').innerHTML = MODE === 'T' ? vTeacher() : vStudent(); loadImgs(); }
+document.addEventListener('click', e => {
+  if (e.target.id === 'modal') return mclose();
+  if (e.target.closest('#theme')) return setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const f = TA[el.dataset.act] || SA[el.dataset.act]; if (!f) return;
+  const key = [el.dataset.act, el.dataset.id || '', el.dataset.stu || '', el.dataset.k || '', el.dataset.st || ''].join('|');
+  if (BUSY.has(key)) return;
+  const r = f(el.dataset);
+  if (r && typeof r.then === 'function') { BUSY.add(key); el.classList.add('busy'); el.setAttribute('aria-busy', 'true');
+    r.finally(() => { BUSY.delete(key); el.classList.remove('busy'); el.removeAttribute('aria-busy'); }); }
+});
+let lastLeave = 0;
+function quizLeft(){
+  if (MODE !== 'S' || S.step !== 'quiz' || !S.qz || S.qz.data.done || Date.now() - lastLeave < 3000) return;
+  lastLeave = Date.now();
+  api('sQuizLeave', { token: LS.get('tok'), sessionId: S.qz.sessionId }, true).then(n => { if (n) S.qzLeaves = n; }).catch(() => {});
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) return quizLeft();
+  if (MODE === 'S' && S.step === 'quiz' && S.qzLeaves && !S.qz.data.done) setTimeout(() => { draw(); toast('ระบบบันทึกว่าออกจากหน้าควิซแล้ว ' + S.qzLeaves + ' ครั้ง ครูจะเห็น'); }, 600); });
+window.addEventListener('blur', quizLeft);
+function bindQ(el){
+  const ds = el.dataset || {};
+  if (ds.qa && S.qa) { if (el.type !== 'radio' || el.checked) S.qa[ds.qa] = el.value; return; }
+  if (!T.qz || T.more !== 'qedit' || MODE !== 'T') return;
+  if (ds.qf) { T.qz[ds.qf] = el.value; return; }
+  if (ds.qi == null || !ds.qk) return;
+  const q = T.qz.qs[+ds.qi]; if (!q) return;
+  if (ds.qk === 'choice') q.choices[+ds.ci] = el.value;
+  else if (ds.qk === 'ans' && el.type === 'radio') { if (el.checked) q.ans = el.value; }
+  else if (ds.qk === 'type') { if (q.type === el.value) return; q.type = el.value; if (el.value === 'mc') { q.choices = q.choices && q.choices.length >= 2 ? q.choices : ['', '', '', '']; q.ans = ''; }
+    else if (el.value === 'num') { q.ans = ''; q.tol = 1; q.unit = ''; } else q.ans = ''; draw(); return; }
+  else q[ds.qk] = el.value;
+  if (ds.qk === 'pts') { const t = $('#qzTot'); if (t) t.textContent = T.qz.qs.reduce((a, x) => a + (+x.pts || 0), 0); }
+}
+document.addEventListener('change', e => { const el = e.target, ds = el.dataset || {}; bindQ(el);
+  if (ds.up && el.files && el.files[0]) { SA.sUpload(ds.up, el.files[0]); el.value = ''; }
+  if (ds.qimg != null && el.files && el.files[0]) { const f = el.files[0], i = +ds.qimg; el.value = ''; run(async () => { const data = await readImg(f); const r = await tapi('tUpload', { data }); IMG[r.fileId] = data; T.qz.qs[i].img = r.fileId; draw(); }); }
+  if (ds.chg === 'qsub') { T.qsub = el.value; draw(); } });
+document.addEventListener('input', e => { const el = e.target; bindQ(el); if (el.dataset && el.dataset.in === 'score' && T.draft && T.draft[el.dataset.stu]) T.draft[el.dataset.stu].score = el.value.trim(); });
+document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.tr && T.tg) return trChange(el); if (el.dataset && el.dataset.chg === 'gid') { T.gid = el.value; run(async () => { if (T.tab === 'att') { T.att = null; await attLoad(); } else if (T.tab === 'score') { T.sg = null; await scLoad(); } }); } });
+setTheme(LS.get('theme') || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+if (/PASTE_APPS_SCRIPT/.test(API_URL)) $('#app').innerHTML = '<div class="card">ยังไม่ได้ใส่ URL ของ Apps Script ในไฟล์ index.html (บรรทัด API_URL)</div>';
+else if (MODE === 'T') { draw(); if (LS.get('tt')) tLoad(); } else sBoot();
+</script>
+</body>
+</html>
