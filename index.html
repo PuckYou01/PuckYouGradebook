@@ -212,7 +212,7 @@ var HEAD = {
   Del: ['sheet', 'key', 'u']
 };
 // ซิงก์ไปเครื่องครู: ทุกชีต (ยกเว้น Log/Del) มีคอลัมน์ u = เวลาที่แก้ล่าสุด (ms) · ลบแถว = บันทึกใน Del
-var APP_VER = '2026.11.14';
+var APP_VER = '2026.11.14b';
 var KEYS = { Config: ['key'], Subjects: ['subjectId'], Traits: ['subjectId', 'studentId', 'kind', 'idx'], Groups: ['groupId'], Students: ['studentId'],
   Timetable: ['day', 'period', 'groupId'], Sessions: ['sessionId'], Attendance: ['sessionId', 'studentId'], Items: ['itemId'], Scores: ['itemId', 'studentId'],
   ExitTickets: ['sessionId', 'studentId'], Files: ['fileId'], Quizzes: ['quizId'], QuizAns: ['quizId', 'studentId', 'sessionId'] };
@@ -241,8 +241,30 @@ function raw_(n) {
 }
 function dirty_(n) {
   if (MEMO_) delete MEMO_[n];
-  var c = CACHED_[n] ? cache_() : null;
-  if (c) { try { c.put('ver:' + n, String(Date.now()) + Math.floor(Math.random() * 1e6), 21600); } catch (e) {} }
+  var c = cache_();
+  if (!c) return;
+  try {
+    if (CACHED_[n]) c.put('ver:' + n, String(Date.now()) + Math.floor(Math.random() * 1e6), 21600);
+    // เวลาแก้ล่าสุดของชีต: tSync ข้ามชีตที่ไม่ได้แก้ ไม่ต้องอ่านทั้งชีต (ถ้าแคชหายจะอ่านตามปกติ)
+    if (KEYS[n] || n === 'Del') c.put('mod:' + n, String(Date.now()), 21600);
+  } catch (e) {}
+}
+// จดเวลาแก้ล่าสุดที่หายจากแคช ภายใต้ lock เดียวกับคนเขียน: ถ้ามีคนเขียนระหว่างที่อ่าน เวลาของเขาจะไม่ถูกทับ
+function fillMods_(fill) {
+  var names = Object.keys(fill); if (!names.length) return;
+  var c = cache_(), lock = LockService.getScriptLock();
+  if (!c || !lock.tryLock(500)) return;
+  try {
+    var now = mods_(names), put = {};
+    names.forEach(function (n) { if (!now[n]) put['mod:' + n] = String(fill[n]); });
+    if (Object.keys(put).length) c.putAll(put, 21600);
+  } catch (e) {} finally { lock.releaseLock(); }
+}
+function mods_(names) {
+  var c = cache_(), out = {};
+  if (!c) return out;
+  try { var m = c.getAll(names.map(function (n) { return 'mod:' + n; })) || {}; names.forEach(function (n) { if (m['mod:' + n]) out[n] = +m['mod:' + n]; }); } catch (e) {}
+  return out;
 }
 function onEdit(e) {
   try {
@@ -1351,7 +1373,9 @@ var API = {
     return n;
   },
   // ข้อมูลทั้งหมดสำหรับเครื่องครู (ซ่อนรหัสผ่าน/PIN/โทเคนเครื่อง)
-  tSnapshot: function () {
+  tSnapshot: function (p) {
+    // เวอร์ชันไม่ตรงกับหน้าเว็บ → ตอบทันที ไม่อ่านชีต
+    if (p.ver && p.ver !== APP_VER) return { ver: APP_VER, mismatch: true };
     var out = { ver: APP_VER, gen: PropertiesService.getScriptProperties().getProperty('gen') || '1', now: Date.now(), data: {} };
     SYNC.forEach(function (n) { out.data[n] = rows_(n).map(function (o) { return syncRow_(n, o); }); });
     return out;
@@ -1360,11 +1384,20 @@ var API = {
   tSync: function (p) {
     var since = +p.since || 0, only = Array.isArray(p.only) ? p.only.filter(function (n) { return KEYS[n]; }) : SYNC;
     var out = { ver: APP_VER, gen: PropertiesService.getScriptProperties().getProperty('gen') || '1', now: Date.now(), data: {}, del: [] };
+    if (p.ver && p.ver !== APP_VER) { out.mismatch = true; return out; }
+    var mod = mods_(only.concat(['Del'])), skip = function (n) { return mod[n] && mod[n] < since; }, fill = {};
+    // ชีตที่ไม่มีเวลาแก้ในแคช (แคชหมดอายุ) → จดเวลาแก้ล่าสุดจริง (u มากสุด) ไว้ รอบหน้าจะได้ข้าม
+    var top = function (n, list) { if (mod[n]) return; var m = 1; list.forEach(function (o) { if (+o.u > m) m = +o.u; }); fill[n] = m; };
+    out.read = [];
     only.forEach(function (n) {
-      var r = rows_(n).filter(function (o) { return +o.u > since; });
+      if (skip(n)) return;
+      out.read.push(n);
+      var all = rows_(n); top(n, all);
+      var r = all.filter(function (o) { return +o.u > since; });
       if (r.length) out.data[n] = r.map(function (o) { return syncRow_(n, o); });
     });
-    out.del = rows_('Del').filter(function (d) { return +d.u > since && only.indexOf(d.sheet) >= 0; }).map(function (d) { return [d.sheet, d.key]; });
+    if (!skip('Del')) { var dl = rows_('Del'); top('Del', dl); out.del = dl.filter(function (d) { return +d.u > since && only.indexOf(d.sheet) >= 0; }).map(function (d) { return [d.sheet, d.key]; }); }
+    fillMods_(fill);
     return out;
   },
   tStumisInfo: function () {
@@ -2024,37 +2057,64 @@ const RL = { on: typeof LOCAL_GAS !== 'undefined', ready: false, started: false,
 const IDB = (() => { let pr = null;
   const open = () => pr || (pr = new Promise((res, rej) => { try { const r = indexedDB.open('gradebook', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch(e){ rej(e); } }));
   const tx = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction('kv', mode), q = fn(t.objectStore('kv')); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); };
-  return { get: k => tx('readonly', st => st.get(k)).catch(() => null), set: (k, v) => tx('readwrite', st => st.put(v, k)).catch(() => null), del: k => tx('readwrite', st => st.delete(k)).catch(() => null) }; })();
+  return { ok: () => open().then(() => true, () => false), get: k => tx('readonly', st => st.get(k)).catch(() => null), set: (k, v) => tx('readwrite', st => st.put(v, k)).catch(() => null), del: k => tx('readwrite', st => st.delete(k)).catch(() => null) }; })();
 const seed10 = () => { let x = ''; while (x.length < 10) x += Math.random().toString(36).slice(2).replace(/[^a-z0-9]/g, ''); return x.slice(0, 10); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function apiRaw(a, p, s){ const r = await fetch(API_URL, { method:'POST', body: JSON.stringify(s ? { a:a, p:p, s:s } : { a:a, p:p }) }); return r.json(); }
 let rlSaveT;
-function rlSave(){ clearTimeout(rlSaveT); rlSaveT = setTimeout(() => IDB.set('replica', { ver: LOCAL_GAS.ver, gen: RL.gen, since: RL.since, full: RL.full, data: LOCAL_GAS.dump() }), 800); }
+// outS = รายการรอส่งที่ทำในเครื่องไปแล้วตอนบันทึก (เปิดใหม่แล้วจะได้ไม่ทำซ้ำ / ทำต่อเฉพาะที่ยังไม่รวม)
+function rlSave(){ clearTimeout(rlSaveT); rlSaveT = setTimeout(() => IDB.set('replica', { ver: LOCAL_GAS.ver, gen: RL.gen, since: RL.since, full: RL.full, outS: RL.out.map(o => o.s), data: LOCAL_GAS.dump() }), 800); }
 function rlSaveOut(){ LS.set('outbox', RL.out.length ? JSON.stringify(RL.out) : null); }
 function rlBadge(){ const b = document.getElementById('rlb'); if (!b) return; const n = RL.out.length;
-  b.textContent = RL.net ? (n ? 'ออฟไลน์ · รอส่ง ' + n + ' รายการ' : 'ออฟไลน์') : n ? 'กำลังส่ง ' + n + ' รายการ' : '';
+  b.textContent = RL.net ? (n ? 'ออฟไลน์ · รอส่ง ' + n + ' รายการ' : 'ออฟไลน์') : n ? 'กำลังส่ง ' + n + ' รายการ' : RL.prep ? 'กำลังเตรียมข้อมูลในเครื่อง…' : '';
   b.className = RL.net ? 'net' : ''; b.style.display = b.textContent && MODE === 'T' ? 'block' : 'none'; }
-function rlOff(why){ RL.ready = false; RL.off = why; if (why === 'ver') toast('Code.gs กับ index.html คนละเวอร์ชัน — ระบบทำงานแบบช้าไปก่อน อัปเดตไฟล์ให้ครบ'); }
+// ใช้ข้อมูลในเครื่องไม่ได้ → จำไว้ 30 นาที ระหว่างนั้นทำงานแบบเดิม ไม่ลองซ้ำทุกครั้งที่เปิดหน้า
+const RL_WHY = { ver: 'Code.gs กับ index.html คนละเวอร์ชัน — อัปเดตให้ครบทั้งสองไฟล์', old: 'Apps Script ยังเป็นเวอร์ชันเก่า — วาง Code.gs ใหม่ รัน setup() แล้ว Deploy › จัดการการทำงาน › แก้ไข › เวอร์ชันใหม่', idb: 'เบราว์เซอร์นี้เก็บข้อมูลในเครื่องไม่ได้ (โหมดส่วนตัว หรือเปิดผ่านแอปอื่นเช่น LINE)', err: 'เตรียมข้อมูลในเครื่องไม่สำเร็จ' };
+function rlFail(why, msg){ RL.ready = false; RL.off = why; RL.offMsg = msg || ''; LS.set('rlfail', JSON.stringify({ why, msg: msg || '', at: Date.now(), ver: LOCAL_GAS.ver })); }
+function rlFailGet(){ try { const f = JSON.parse(LS.get('rlfail') || 'null'); return f && f.ver === LOCAL_GAS.ver && Date.now() - f.at < (f.why === 'err' ? 5 : 30) * 60e3 ? f : null; } catch(e){ return null; } }
 async function rlFull(){
-  const j = await apiRaw('tSnapshot', { t: LS.get('tt') });
-  if (!j.ok) throw new Error(j.error);
+  const j = await apiRaw('tSnapshot', { t: LS.get('tt'), ver: LOCAL_GAS.ver });
+  if (!j.ok) { if (/ไม่รู้จักคำสั่ง/.test(j.error || '')) { rlFail('old'); toast(RL_WHY.old); return false; } throw new Error(j.error); }
   const d = j.data;
-  if (d.ver !== LOCAL_GAS.ver) { rlOff('ver'); return false; }
+  if (d.mismatch || d.ver !== LOCAL_GAS.ver) { rlFail('ver'); toast(RL_WHY.ver); return false; }
   LOCAL_GAS.reset(); Object.keys(d.data).forEach(n => LOCAL_GAS.put(n, d.data[n]));
   RL.since = {}; LOCAL_GAS.SYNC.forEach(n => RL.since[n] = d.now - 120000);
-  RL.gen = d.gen; RL.full = Date.now(); RL.lastSync = Date.now(); RL.ready = true; rlSave(); return true;
+  RL.gen = d.gen; RL.full = Date.now(); RL.lastSync = Date.now(); RL.ready = true; RL.off = ''; LS.set('rlfail', null); rlSave(); return true;
 }
-async function rlStart(){
-  if (!RL.on || RL.started || RL.off) return; RL.started = true;
-  try { RL.out = JSON.parse(LS.get('outbox') || '[]'); } catch(e){ RL.out = []; }
-  const c = await IDB.get('replica');
-  try {
-    if (c && c.ver === LOCAL_GAS.ver && c.data) { LOCAL_GAS.reset(); Object.keys(c.data).forEach(n => LOCAL_GAS.put(n, c.data[n])); Object.assign(RL, { since: c.since || {}, gen: c.gen, full: c.full || 0, ready: true }); }
-    else await rlFull();
-  } catch(e){ RL.started = false; return; }
-  if (RL.out.length) rlPump(); else rlSync(null, true);
+function rlLoops(){
+  if (RL.loops) return; RL.loops = true;
   setInterval(() => { if (!document.hidden) rlSync(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) rlSync(null, true); });
+}
+const rlStat = () => RL.ready ? 'ใช้ข้อมูลในเครื่อง' + (RL.openMs ? ' · เปิดหน้านี้ใช้ ' + (RL.openMs / 1000).toFixed(1) + ' วินาที' : '') + (RL.out.length ? ' · รอส่ง ' + RL.out.length : '')
+  : RL.off ? 'ทำงานแบบเดิม (ช้า) — ' + (RL_WHY[RL.off] || RL.off) + (RL.offMsg ? ': ' + RL.offMsg : '') : RL.prep ? 'กำลังเตรียมข้อมูลในเครื่อง…' : !RL.on ? 'ไม่มีโหมดข้อมูลในเครื่อง' : 'ยังไม่พร้อม';
+// ดึงส่วนที่เปลี่ยนแบบไม่ถี่ (ตอนสลับแท็บ/กลับหน้าวันนี้)
+function rlSyncSoon(){ if (RL.ready && Date.now() - RL.lastSync >= (window.RL_GAP != null ? window.RL_GAP : 15000)) rlSync(); }
+// เร็วเสมอ: มีข้อมูลในเครื่อง → ใช้ทันที · ไม่มี → หน้าโหลดแบบเดิมไปก่อน แล้วเตรียมข้อมูลเบื้องหลัง
+async function rlStart(){
+  if (!RL.on || RL.started) return; RL.started = true;
+  try { RL.out = JSON.parse(LS.get('outbox') || '[]'); } catch(e){ RL.out = []; }
+  if (RL.out.length) rlPump();
+  const f = rlFailGet(); if (f) { RL.off = f.why; RL.offMsg = f.msg || ''; return; }
+  if (!(await IDB.ok())) { rlFail('idb'); return; }
+  const c = await IDB.get('replica');
+  if (c && c.ver === LOCAL_GAS.ver && c.data) {
+    try {
+      LOCAL_GAS.reset(); Object.keys(c.data).forEach(n => LOCAL_GAS.put(n, c.data[n]));
+      // รายการรอส่งที่บันทึกหลังสำเนาล่าสุด (ปิดหน้าเร็วก่อนเก็บทัน) → ทำในเครื่องซ้ำด้วย seed เดิม ได้ผลตรงกัน
+      const had = new Set(c.outS || []); let re = 0; RL.out.forEach(o => { if (!had.has(o.s)) { re++; try { LOCAL_GAS.run(o.a, o.p, o.s); } catch(e){} } });
+      Object.assign(RL, { since: c.since || {}, gen: c.gen, full: c.full || 0, ready: true, src: 'cache' }); if (re) rlSave();
+      rlLoops(); if (!RL.out.length) rlSync(null, true); return;
+    } catch(e){ RL.ready = false; }
+  }
+  RL.prep = (async () => {
+    try {
+      for (let i = 0; i < 600 && (RL.out.length || RL.busy); i++) await sleep(100);
+      if (await rlFull()) { RL.src = 'net'; rlLoops(); await rlRefresh(); rlSync(null, true); }
+    } catch(e){ const m = String(e && e.message || e); if (e instanceof TypeError || /AUTH/.test(m)) RL.started = false; else rlFail('err', m); }
+    finally { RL.prep = null; rlBadge(); }
+  })();
+  rlBadge();
 }
 async function rlPump(){
   if (RL.busy || !RL.out.length) return; RL.busy = true; rlBadge();
@@ -2073,7 +2133,15 @@ async function rlPump(){
   } finally { RL.busy = false; rlBadge(); }
   if (bad) { try { await rlFull(); } catch(e){} await rlRefresh(); } else await rlSync(null, true);
 }
-async function rlDrain(){ for (let i = 0; i < 600 && (RL.out.length || RL.busy); i++) { if (!RL.busy) rlPump(); await sleep(50); } }
+// คำสั่งที่ต้องคุยกับหลังบ้าน รอให้รายการค้างส่งหมดก่อน (ไม่รอนานเกิน 20 วินาที)
+async function rlDrain(){
+  for (let i = 0; i < 400; i++) {
+    if (!RL.out.length && !RL.busy) return;
+    if (RL.net) throw new Error('ออฟไลน์อยู่ — ต่อเน็ตแล้วลองอีกครั้ง (รายการที่บันทึกไว้ยังไม่หาย)');
+    if (!RL.busy) rlPump(); await sleep(50);
+  }
+  throw new Error('ยังส่งรายการที่ค้างไม่เสร็จ ลองอีกครั้ง');
+}
 async function rlSync(only, force, quietRefresh){
   if (!RL.ready || RL.out.length || RL.busy) return false;
   if (RL.sync) return RL.sync;
@@ -2082,11 +2150,12 @@ async function rlSync(only, force, quietRefresh){
   RL.sync = (async () => {
     try {
       const since = Math.min.apply(null, list.map(n => RL.since[n] || 0));
-      const j = await apiRaw('tSync', { t: LS.get('tt'), since, only: only || undefined });
+      const j = await apiRaw('tSync', { t: LS.get('tt'), since, only: only || undefined, ver: LOCAL_GAS.ver });
       if (RL.net) { RL.net = false; rlBadge(); }
       if (!j.ok) return false;
       const d = j.data;
-      if (d.ver !== LOCAL_GAS.ver) { rlOff('ver'); return false; }
+      if (d.mismatch || d.ver !== LOCAL_GAS.ver) { rlFail('ver'); toast(RL_WHY.ver); return false; }
+      if (RL.out.length || RL.busy) return false;
       if (d.gen !== RL.gen || Date.now() - RL.full > 12 * 3600e3) { await rlFull(); return true; }
       if (RL.out.length || RL.busy) return false;
       let ch = 0;
@@ -2119,7 +2188,7 @@ async function rlRefresh(){
   } catch(e){ if (T.tab === 'live' || T.tab === 'stu') { T.tab = 'today'; T.dash = LOCAL_GAS.run('tDash', {}); } }
   draw();
 }
-window.__rlIdle = async () => { for (let i = 0; i < 800; i++) { if (!RL.out.length && !RL.busy && !RL.sync) return; await sleep(20); } };
+window.__rlIdle = async () => { for (let i = 0; i < 800; i++) { if (!RL.out.length && !RL.busy && !RL.sync && !RL.prep) return; await sleep(20); } };
 async function tapi(a, p, quiet){
   const q = Object.assign({}, p || {});
   if (RL.ready && LOCAL_R.has(a)) return LOCAL_GAS.run(a, q);
@@ -2129,7 +2198,7 @@ async function tapi(a, p, quiet){
     if (!quiet && !q.dry) savedFlash();
     rlPump(); return r;
   }
-  if (RL.ready) await rlDrain();
+  if (RL.out.length || RL.busy) await rlDrain();
   const r = await api(a, Object.assign({ t: LS.get('tt') }, q), quiet);
   if (RL.ready && !READS.has(a) && !q.dry) await rlSync(null, true);
   return r;
@@ -2446,12 +2515,12 @@ const grpSel = (id, cur) => `<select id="${id}" data-chg="${id}">${T.boot.groups
 // เปิดแอป: แสดงข้อมูลชุดล่าสุดที่จำไว้ในเครื่องทันที แล้วค่อยอัปเดตจากเซิร์ฟเวอร์ (ไม่ต้องรอหน้าโหลด)
 async function tLoad(){
   const want = T.tab === 'today';
-  if (RL.on && !RL.started && !RL.off) { T.stale = !T.boot; draw(); await rlStart(); T.stale = false; }
+  if (RL.on && !RL.started) await rlStart();
   await run(async () => { const r = await Promise.all([tapi('tBoot'), want ? tapi('tDash') : null]); T.boot = r[0]; if (want) T.dash = r[1]; if (!grp(T.gid)) T.gid = T.boot.groups[0] ? T.boot.groups[0].groupId : ''; });
-  draw(); if (RL.ready) rlSync(); }
+  draw(); if (RL.ready && RL.src === 'cache' && !RL.openMs) RL.openMs = Math.round(performance.now()); rlSyncSoon(); }
 function vTeacher(){
   if (!LS.get('tt')) return `<h1>เข้าสู่ระบบครู</h1><div class="card"><label>รหัสผ่าน (ดูในชีต Config)</label><input class="full" id="tpass" type="password"><p><button class="btn pri" data-act="tLogin">เข้าสู่ระบบ</button></p></div>`;
-  if (!T.boot) return `<div class="card center">${T.stale ? 'กำลังโหลดข้อมูลครั้งแรก (ครั้งต่อไปจะเปิดได้ทันที)…' : 'กำลังโหลด…'} <button class="btn sm" data-act="tReload">โหลดใหม่</button></div>`;
+  if (!T.boot) return `<div class="card center">กำลังโหลด… <button class="btn sm" data-act="tReload">โหลดใหม่</button></div>`;
   const tabs = [['today','วันนี้'],['att','เช็คชื่อ'],['score','คะแนน'],['tt','ตารางสอน'],['more','เพิ่มเติม']];
   const cur = T.tab === 'live' ? 'today' : T.tab === 'item' ? 'score' : T.tab === 'stu' ? (T.stuFrom || 'score') : T.tab;
   const body = { today:vToday, live:vLive, att:vAtt, score:vScore, item:vItem, tt:vTT, more:vMore, stu:vStu }[T.tab]();
@@ -3259,7 +3328,7 @@ function vMore(){
     <div class="card"><label style="color:inherit"><input type="checkbox" id="c_stuAuto" data-act="stuAutoSet" ${c.stuAuto === '1' ? 'checked' : ''}> <b>ส่งเข้า STUMIS อัตโนมัติ</b></label><br><small class="mut">ทุกชั่วโมง ระบบจะส่งคาบที่ปิดแล้วและยังไม่ส่ง รวมถึงคาบที่แก้ย้อนหลัง (แก้เฉพาะคนที่ต่าง) · ถ้าส่งไม่ได้จะขึ้น <b style="color:var(--abs)">!</b> ที่หัวคาบ แล้วรอจนกว่าจะแก้คาบนั้น</small></div>
     <div class="card"><label>เปลี่ยนรหัสผ่านครู (อย่างน้อย 6 ตัว)</label><div class="wrap"><input id="c_pass" type="password"><button class="btn" data-act="passSave">เปลี่ยน</button></div></div>
     <div class="card"><b>ลิงก์สำหรับเขียนลงแท็ก NFC (หน้านักเรียน)</b><p style="word-break:break-all">${esc(base)}</p><b>ลิงก์หน้าครู</b><p style="word-break:break-all">${esc(base)}#teacher</p><button class="btn sm" data-act="tLogout">ออกจากระบบครู</button></div>
-    <div class="card row"><span><b>ข้อมูลในเครื่องนี้</b><br><small class="mut">แอปเก็บสำเนาข้อมูลไว้ในเครื่องเพื่อให้เปิดและบันทึกได้ทันที ระบบดึงส่วนที่เปลี่ยนให้เอง ถ้าแก้ในชีตด้วยมือแล้วไม่เห็น กดปุ่มนี้</small></span><button class="btn sm" data-act="rlFullBtn">โหลดใหม่ทั้งหมด</button></div>`; }
+    <div class="card row"><span><b>ข้อมูลในเครื่องนี้</b><br><small class="mut">แอปเก็บสำเนาข้อมูลไว้ในเครื่องเพื่อให้เปิดและบันทึกได้ทันที ระบบดึงส่วนที่เปลี่ยนให้เอง ถ้าแก้ในชีตด้วยมือแล้วไม่เห็น กดปุ่มนี้</small><br><small id="rlStat">สถานะ: ${esc(rlStat())}</small></span><button class="btn sm" data-act="rlFullBtn">โหลดใหม่ทั้งหมด</button></div>`; }
   if (T.more === 'quiz') return vQuizList(back);
   if (T.more === 'qedit') return vQuizEdit();
   if (T.more === 'qres') return vQuizRes();
@@ -3273,10 +3342,10 @@ function vMore(){
 const TA = {
   tLogin: () => run(async () => { const d = await api('tLogin', { pass: $('#tpass').value }); LS.set('tt', d.t); await tLoad(); }),
   tLogout: () => run(async () => { if (RL.out.length && !(await ask('ยังมี ' + RL.out.length + ' รายการที่ยังไม่ได้ส่งขึ้นเซิร์ฟเวอร์ ออกจากระบบแล้วจะหายไป ยืนยัน?', { danger: true }))) return;
-    LS.set('tt', null); RL.out = []; rlSaveOut(); await IDB.del('replica'); RL.ready = false; RL.started = false; T.boot = null; draw(); }),
-  rlFullBtn: () => run(async () => { await rlDrain(); await rlFull(); await rlRefresh(); toast('โหลดข้อมูลใหม่ทั้งหมดแล้ว'); }),
+    LS.set('tt', null); LS.set('rlfail', null); RL.out = []; rlSaveOut(); await IDB.del('replica'); RL.ready = false; RL.started = false; T.boot = null; draw(); }),
+  rlFullBtn: () => run(async () => { LS.set('rlfail', null); RL.off = ''; await rlDrain(); if (await rlFull()) { RL.src = 'net'; rlLoops(); await rlRefresh(); toast('โหลดข้อมูลใหม่ทั้งหมดแล้ว'); } else draw(); }),
   tReload: () => tLoad(),
-  tab: d => run(async () => { clearInterval(T.timer); T.tab = d.t; if (RL.ready) setTimeout(() => rlSync(), 0); if (d.t === 'today') return tLoad(); if (d.t === 'att') { T.att = null; draw(); return grp(T.gid) ? attLoad() : null; } if (d.t === 'score') { T.sg = null; draw(); return grp(T.gid) ? scLoad() : null; } if (d.t === 'more') T.more = 'menu'; draw(); }),
+  tab: d => run(async () => { clearInterval(T.timer); T.tab = d.t; setTimeout(rlSyncSoon, 0); if (d.t === 'today') return tLoad(); if (d.t === 'att') { T.att = null; draw(); return grp(T.gid) ? attLoad() : null; } if (d.t === 'score') { T.sg = null; draw(); return grp(T.gid) ? scLoad() : null; } if (d.t === 'more') T.more = 'menu'; draw(); }),
   more: d => run(async () => { T.more = d.m; if (d.m === 'log') T.log = await tapi('tLog'); if (d.m === 'quiz') T.quizzes = await tapi('tQuizList'); if (d.m === 'stu') { T.boot = await tapi('tBoot'); if (!T.room && grp(T.gid)) T.room = roomsOf(grp(T.gid))[0]; } draw(); }),
   room: d => { T.room = d.r; draw(); },
   open: d => run(async () => { const se = await tapi('tOpen', { groupId: d.g, period: d.p, span: d.s }); T.boot.open.push(se); T.gid = d.g; await openLive(se.sessionId); }),
