@@ -130,15 +130,1853 @@ details summary{cursor:pointer;font-weight:600}
 pre.prompt{white-space:pre-wrap;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:.88rem;max-height:220px;overflow:auto}
 .stum{color:var(--ok);font-size:.75rem;margin-left:2px}.stum.dirty{color:var(--late)}.stum.err{color:var(--abs);font-weight:700}
 .trsel{min-width:52px;padding:4px}.trsel.chg{outline:2px solid var(--late);outline-offset:-1px}
+#rlb{position:fixed;left:10px;bottom:76px;z-index:60;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:.78rem;color:var(--mut);display:none;box-shadow:0 2px 8px rgba(0,0,0,.12)}#rlb.net{color:var(--late);border-color:var(--late)}
 </style>
 </head>
 <body>
 <div id="bar"></div>
 <header id="hdr"></header>
 <div id="app"></div>
+<div id="rlb" role="status" aria-live="polite"></div>
 <div id="modal"></div>
 <div id="toast"></div>
 <div id="saved" role="status" aria-live="polite"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>บันทึกแล้ว</div>
+<script>
+/* ===== สำเนา Code.gs ที่รันในเครื่องครู (อ่านทันที / เขียนก่อนแล้วส่งตามไปเซิร์ฟเวอร์) ===== */
+const LOCAL_GAS = (function () {
+  const sheets = {};
+  class Range {
+    constructor(sh, r, c, nr, nc) { this.sh = sh; this.r = r; this.c = c; this.nr = nr; this.nc = nc; }
+    setNumberFormat() { return this; } setFontWeight() { return this; }
+    setValues(v) { for (let i = 0; i < this.nr; i++) { const row = this.sh.data[this.r - 1 + i] = this.sh.data[this.r - 1 + i] || []; for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = v[i][j] == null ? '' : String(v[i][j]); } return this; }
+    setValue(v) { return this.setValues([[v]]); }
+    getDisplayValues() { const out = []; for (let i = 0; i < this.nr; i++) { const src = this.sh.data[this.r - 1 + i] || [], row = []; for (let j = 0; j < this.nc; j++) row.push(src[this.c - 1 + j] == null ? '' : String(src[this.c - 1 + j])); out.push(row); } return out; }
+    getValues() { return this.getDisplayValues(); }
+  }
+  class Sheet {
+    constructor(n) { this.name = n; this.data = []; }
+    getName() { return this.name; }
+    getLastRow() { let n = this.data.length; while (n > 0 && (!this.data[n - 1] || this.data[n - 1].join('') === '')) n--; return n; }
+    getMaxRows() { return Math.max(1000, this.data.length + 200); } insertRowsAfter() {}
+    getRange(r, c, nr, nc) { return new Range(this, r, c, nr || 1, nc || 1); }
+    getDataRange() { let w = 1; this.data.forEach(x => { if (x) w = Math.max(w, x.length); }); return new Range(this, 1, 1, Math.max(1, this.getLastRow()), w); }
+    deleteRow(r) { this.data.splice(r - 1, 1); } setFrozenRows() {}
+  }
+  const sheet = n => sheets[n] || (sheets[n] = new Sheet(n));
+  const ss = { getSheetByName: n => sheets[n] || null, insertSheet: n => sheet(n) };
+  const props = {}, pad = n => String(n).padStart(2, '0');
+  const SpreadsheetApp = { getActiveSpreadsheet: () => ss };
+  const PropertiesService = { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = String(v); } }) };
+  const remoteOnly = () => { throw new Error('ต้องทำบนเซิร์ฟเวอร์'); };
+  const UrlFetchApp = { fetch: remoteOnly }, DriveApp = { getFolderById: remoteOnly, createFolder: remoteOnly, getFileById: remoteOnly };
+  const LockService = { getScriptLock: () => ({ waitLock() {}, tryLock() { return true; }, releaseLock() {} }) };
+  const ScriptApp = { getProjectTriggers: () => [], newTrigger: remoteOnly };
+  const Logger = { log() {} };
+  const ContentService = { MimeType: { JSON: 'json' }, createTextOutput: t => ({ text: t, setMimeType() { return this; } }) };
+  const Utilities = {
+    DigestAlgorithm: { SHA_256: 1 }, Charset: { UTF_8: 1 },
+    computeDigest: remoteOnly, base64Decode: remoteOnly, base64Encode: remoteOnly, newBlob: remoteOnly,
+    getUuid: () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),
+    formatDate: (d, tz, f) => { const t = new Date(d.getTime() + 7 * 3600000), Y = t.getUTCFullYear(), M = pad(t.getUTCMonth() + 1), D = pad(t.getUTCDate()), h = pad(t.getUTCHours()), m = pad(t.getUTCMinutes()), s = pad(t.getUTCSeconds());
+      if (f === 'yyyy-MM-dd') return Y + '-' + M + '-' + D;
+      if (f === 'HH:mm:ss') return h + ':' + m + ':' + s;
+      if (f === 'yyyy-MM-dd HH:mm') return Y + '-' + M + '-' + D + ' ' + h + ':' + m;
+      if (f === 'HH:mm') return h + ':' + m;
+      if (f === 'u') return String(t.getUTCDay() || 7);
+      return t.toISOString(); }
+  };
+  /**
+ * ระบบเช็คชื่อ + เก็บคะแนน — Backend (Google Apps Script ผูกกับ Google Sheets)
+ * ติดตั้ง: วางไฟล์นี้ใน Extensions > Apps Script ของชีต แล้วรัน setup() 1 ครั้ง
+ * จากนั้น Deploy > New deployment > Web app (Execute as: Me, Who has access: Anyone)
+ */
+var TZ = 'Asia/Bangkok';
+var ST = ['มา', 'สาย', 'ลา', 'ขาด', 'กิจกรรม'];
+var CATS = ['pre', 'mid', 'post', 'final'];
+var HEAD = {
+  Config: ['key', 'value', 'note'],
+  Subjects: ['subjectId', 'code', 'name', 'wPre', 'wMid', 'wPost', 'wFinal', 'wMode'],
+  Traits: ['subjectId', 'studentId', 'kind', 'idx', 'val'],
+  Groups: ['groupId', 'subjectId', 'label', 'rooms'],
+  Students: ['studentId', 'room', 'no', 'name', 'pin', 'device', 'fail', 'active', 'nick', 'self', 'resetReq'],
+  Timetable: ['day', 'period', 'groupId', 'span'],
+  Sessions: ['sessionId', 'groupId', 'date', 'period', 'span', 'openedAt', 'closedAt', 'state', 'exitQ', 'exitOpen', 'exitItemId', 'note', 'quizId', 'quizOpen', 'stumis'],
+  Attendance: ['sessionId', 'studentId', 's1', 's2', 'time', 'src', 'dev'],
+  Items: ['itemId', 'subjectId', 'cat', 'label', 'max', 'ord', 'hide', 'due'],
+  Scores: ['itemId', 'studentId', 'sub', 'score', 'subAt'],
+  ExitTickets: ['sessionId', 'studentId', 'rating', 'answer', 'time'],
+  Files: ['fileId', 'kind', 'itemId', 'studentId', 'driveId', 'mime', 'time', 'hash'],
+  Quizzes: ['quizId', 'subjectId', 'title', 'itemId', 'timeLimit', 'qs', 'updated'],
+  QuizAns: ['quizId', 'studentId', 'sessionId', 'start', 'end', 'ans', 'score', 'detail', 'leaves'],
+  Log: ['time', 'who', 'what', 'key', 'old', 'new', 'undo', 'id'],
+  Del: ['sheet', 'key', 'u']
+};
+// ซิงก์ไปเครื่องครู: ทุกชีต (ยกเว้น Log/Del) มีคอลัมน์ u = เวลาที่แก้ล่าสุด (ms) · ลบแถว = บันทึกใน Del
+var APP_VER = '2026.11.14';
+var KEYS = { Config: ['key'], Subjects: ['subjectId'], Traits: ['subjectId', 'studentId', 'kind', 'idx'], Groups: ['groupId'], Students: ['studentId'],
+  Timetable: ['day', 'period', 'groupId'], Sessions: ['sessionId'], Attendance: ['sessionId', 'studentId'], Items: ['itemId'], Scores: ['itemId', 'studentId'],
+  ExitTickets: ['sessionId', 'studentId'], Files: ['fileId'], Quizzes: ['quizId'], QuizAns: ['quizId', 'studentId', 'sessionId'] };
+Object.keys(KEYS).forEach(function (n) { HEAD[n].push('u'); });
+var SYNC = Object.keys(KEYS);
+
+/* ---------- เครื่องมืออ่าน/เขียนชีต (ทุกเซลล์เก็บเป็นข้อความ) ---------- */
+function ss_() { return SpreadsheetApp.getActiveSpreadsheet(); }
+function sh_(n) { return ss_().getSheetByName(n); }
+// ความเร็ว: จำค่าที่อ่านแล้วภายในคำขอเดียว (MEMO_) + เก็บชีตที่เปลี่ยนไม่บ่อยไว้ใน CacheService
+// ทุกการเขียนผ่าน addMany_/upd_/delWhere_ จะล้างแคชของชีตนั้น · แก้ในชีตด้วยมือ → onEdit ล้างให้
+var MEMO_ = null, CACHED_ = { Config: 1, Subjects: 1, Groups: 1, Timetable: 1, Items: 1, Students: 1, Quizzes: 1 };
+function cache_() { try { return CacheService.getScriptCache(); } catch (e) { return null; } }
+function raw_(n) {
+  if (MEMO_ && MEMO_[n]) return MEMO_[n];
+  var c = CACHED_[n] ? cache_() : null, v = null, ver = '0';
+  if (c) {
+    try { ver = c.get('ver:' + n) || '0'; var j = c.get('rows:' + n + ':' + ver); if (j) v = JSON.parse(j); } catch (e) { v = null; }
+  }
+  if (!v) {
+    v = sh_(n).getDataRange().getDisplayValues();
+    if (c) { try { var js = JSON.stringify(v); if (js.length < 95000) c.put('rows:' + n + ':' + ver, js, 300); } catch (e) {} }
+  }
+  if (MEMO_) MEMO_[n] = v;
+  return v;
+}
+function dirty_(n) {
+  if (MEMO_) delete MEMO_[n];
+  var c = CACHED_[n] ? cache_() : null;
+  if (c) { try { c.put('ver:' + n, String(Date.now()) + Math.floor(Math.random() * 1e6), 21600); } catch (e) {} }
+}
+function onEdit(e) {
+  try {
+    var sh = e.range.getSheet(), n = sh.getName(); dirty_(n);
+    var c = KEYS[n] ? HEAD[n].indexOf('u') : -1, r1 = Math.max(2, e.range.getRow()), r2 = e.range.getLastRow();
+    if (c >= 0 && r2 >= r1 && e.range.getColumn() <= c) sh.getRange(r1, c + 1, r2 - r1 + 1, 1).setNumberFormat('@').setValues(Array.from({ length: r2 - r1 + 1 }, function () { return [String(Date.now())]; }));
+  } catch (x) {}
+}
+function rows_(n) {
+  var v = raw_(n), h = HEAD[n], out = [];
+  for (var i = 1; i < v.length; i++) {
+    if (v[i].join('') === '') continue;
+    var o = { _r: i + 1 };
+    for (var j = 0; j < h.length; j++) o[h[j]] = v[i][j] === undefined ? '' : String(v[i][j]);
+    out.push(o);
+  }
+  return out;
+}
+function vals_(n, o) {
+  return HEAD[n].map(function (k) { return o[k] === undefined || o[k] === null ? '' : String(o[k]); });
+}
+function stamp_(n, o) { if (KEYS[n]) o.u = String(NOW_ ? NOW_ : Date.now()); return o; }
+var NOW_ = 0;
+function addMany_(n, list) {
+  if (!list.length) return;
+  list.forEach(function (o) { stamp_(n, o); });
+  var s = sh_(n), start = s.getLastRow() + 1, need = start + list.length - 1;
+  if (need > s.getMaxRows()) s.insertRowsAfter(s.getMaxRows(), need - s.getMaxRows() + 200);
+  s.getRange(start, 1, list.length, HEAD[n].length).setNumberFormat('@')
+    .setValues(list.map(function (o) { return vals_(n, o); }));
+  dirty_(n);
+}
+function add_(n, o) { addMany_(n, [o]); }
+// เขียนทีเดียวทั้งช่วงคอลัมน์ (เดิมเขียนทีละเซลล์ ช้าเมื่อแก้หลายช่อง)
+function upd_(n, row, o) {
+  if (KEYS[n]) { o = JSON.parse(JSON.stringify(o)); stamp_(n, o); }
+  var s = sh_(n), h = HEAD[n], cols = Object.keys(o).map(function (k) { return h.indexOf(k); }).filter(function (c) { return c >= 0; });
+  if (!cols.length) return;
+  var c1 = Math.min.apply(null, cols), c2 = Math.max.apply(null, cols), r = s.getRange(row, c1 + 1, 1, c2 - c1 + 1);
+  var cur = cols.length === c2 - c1 + 1 ? [] : r.getDisplayValues()[0], line = [];
+  for (var c = c1; c <= c2; c++) {
+    var k = h[c];
+    line.push(cols.indexOf(c) >= 0 ? String(o[k] === null || o[k] === undefined ? '' : o[k]) : (cur[c - c1] === undefined ? '' : cur[c - c1]));
+  }
+  r.setNumberFormat('@').setValues([line]);
+  dirty_(n);
+}
+function delWhere_(n, pred) {
+  var hit = rows_(n).filter(pred), rs = hit.map(function (x) { return x._r; }).sort(function (a, b) { return b - a; });
+  var s = sh_(n);
+  rs.forEach(function (r) { s.deleteRow(r); });
+  if (rs.length) {
+    dirty_(n);
+    if (KEYS[n]) addMany_('Del', hit.map(function (x) { return { sheet: n, key: KEYS[n].map(function (k) { return x[k]; }).join('|'), u: String(NOW_ ? NOW_ : Date.now()) }; }));
+  }
+  return rs.length;
+}
+
+/* ---------- เครื่องมือทั่วไป ---------- */
+function d_(dt) { return Utilities.formatDate(dt || new Date(), TZ, 'yyyy-MM-dd'); }
+function t_(dt) { return Utilities.formatDate(dt || new Date(), TZ, 'HH:mm:ss'); }
+var ID_SEED = null, ID_N = 0;
+// คำขอจากเครื่องครูส่ง seed มาด้วย → รหัสที่สร้างตรงกับที่เครื่องครูสร้างไว้ก่อนแล้ว
+function id_(p) { return ID_SEED ? p + ID_SEED + (++ID_N).toString(36) : p + Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36); }
+/** undo = คำสั่งเรียกคืนค่าเดิม { a: ชื่อ API, p: พารามิเตอร์ } */
+function log_(who, what, key, oldv, newv, undo) {
+  add_('Log', { time: d_() + ' ' + t_(), who: who, what: what, key: key, old: oldv, 'new': newv, undo: undo ? JSON.stringify(undo) : '', id: id_('L') });
+}
+var UNDOABLE = ['tSetScores', 'tSetAtt', 'tAttRestore', 'tItemSave', 'tStuSave', 'tSubjectSave', 'tTraitSet'];
+function secret_() { return PropertiesService.getScriptProperties().getProperty('secret') || ''; }
+function hash_(s) {
+  var b = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s + '|' + secret_(), Utilities.Charset.UTF_8);
+  return b.map(function (x) { return ('0' + ((x + 256) % 256).toString(16)).slice(-2); }).join('');
+}
+function cfg_() {
+  var o = {};
+  rows_('Config').forEach(function (r) { o[r.key] = r.value; });
+  return o;
+}
+function cuts_(cfg) { return String(cfg.gradeCut || '80,75,70,65,60,55,50').split(',').map(Number); }
+function present_(cfg) { return String(cfg.presentAs || 'มา,สาย,กิจกรรม').split(',').map(function (x) { return x.trim(); }); }
+function normRoom_(r) { return String(r).replace(/ม\.?\s*/, '').replace(/\s/g, ''); }
+function roomsOf_(g) { return String(g.rooms).split(',').map(normRoom_).filter(String); }
+function allStus_() {
+  return rows_('Students').map(function (s) { s.room = normRoom_(s.room); s.studentId = s.studentId.trim(); return s; })
+    .filter(function (s) { return s.studentId; });
+}
+function stus_() { return allStus_().filter(function (s) { return s.active !== '0'; }); }
+function allRooms_() {
+  var o = {};
+  rows_('Groups').forEach(function (g) { roomsOf_(g).forEach(function (r) { o[r] = 1; }); });
+  return Object.keys(o).sort(function (a, b) { return a.localeCompare(b, 'th', { numeric: true }); });
+}
+function checkStu_(p, selfId) {
+  var name = String(p.name || '').trim().replace(/\s+/g, ' '), room = normRoom_(p.room || ''), no = String(p.no || '').trim();
+  if (name.length < 4 || name.indexOf(' ') < 0) throw new Error('กรอกชื่อและนามสกุล (เว้นวรรคระหว่างชื่อกับนามสกุล)');
+  if (!/^\d{1,2}$/.test(no) || +no < 1) throw new Error('เลขที่ต้องเป็นตัวเลข 1–99');
+  if (!room) throw new Error('เลือกห้อง');
+  var dup = stus_().filter(function (x) { return x.room === room && String(+x.no) === String(+no) && x.studentId !== selfId; })[0];
+  if (dup) throw new Error('ห้อง ' + room + ' เลขที่ ' + (+no) + ' มีในระบบแล้ว (' + dup.name + ') ถ้าไม่ถูกต้องให้แจ้งครู');
+  return { name: name, nick: String(p.nick || '').trim().slice(0, 30), room: room, no: String(+no) };
+}
+function stu_(id) {
+  id = String(id || '').trim();
+  var s = stus_().filter(function (x) { return x.studentId === id; })[0];
+  if (!s) throw new Error('ไม่พบเลขประจำตัวนี้');
+  return s;
+}
+function byToken_(tok) {
+  if (!tok) return null;
+  return stus_().filter(function (x) { return x.device && x.device === tok; })[0] || null;
+}
+function me_(s) { return { id: s.studentId, name: s.name, nick: s.nick || '', room: s.room, no: s.no }; }
+function find_(n, k, v, msg) {
+  var r = rows_(n).filter(function (x) { return x[k] === v; })[0];
+  if (!r) throw new Error(msg || 'ไม่พบข้อมูล');
+  return r;
+}
+function tTok_() { return hash_('T|' + (cfg_().teacherPass || '')); }
+function authT_(p) { if (!p || p.t !== tTok_()) throw new Error('AUTH: กรุณาเข้าสู่ระบบครูใหม่'); }
+function expired_(se, cfg) {
+  var mins = (+cfg.periodMin || 50) * (+se.span || 1) + 10;
+  return Date.now() - Number(se.openedAt) > mins * 60000;
+}
+function sortItems_(its) {
+  return its.sort(function (a, b) { return CATS.indexOf(a.cat) - CATS.indexOf(b.cat) || (+a.ord - +b.ord); });
+}
+
+/* ---------- การคำนวณ ---------- */
+function calcNet_(sub, items, sm) {
+  var w = { pre: +sub.wPre || 0, mid: +sub.wMid || 0, post: +sub.wPost || 0, 'final': +sub.wFinal || 0 };
+  var out = { cats: {}, total: 0 };
+  var eq = sub.wMode === 'eq';
+  CATS.forEach(function (c) {
+    var got = 0, max = 0, frac = 0, n = 0;
+    items.forEach(function (i) {
+      if (i.cat !== c) return;
+      var m = +i.max || 0, sc = sm[i.itemId], g = sc && sc.score !== '' ? +sc.score || 0 : 0;
+      max += m; got += g;
+      if (m > 0) { frac += g / m; n++; }
+    });
+    var net = eq ? (n ? frac / n * w[c] : 0) : (max > 0 ? got / max * w[c] : 0);
+    out.cats[c] = { got: got, max: max, w: w[c], net: Math.round(net * 100) / 100 };
+    out.total += net;
+  });
+  out.total = Math.round(out.total * 100) / 100;
+  return out;
+}
+function grade_(total, cuts) {
+  var g = [4, 3.5, 3, 2.5, 2, 1.5, 1];
+  for (var i = 0; i < cuts.length; i++) if (total >= cuts[i]) return g[i];
+  return 0;
+}
+/** สรุปเวลาเรียน: sessions ของกลุ่ม, am = {sessionId: แถวเช็คชื่อของนักเรียนคนนั้น} */
+function attSum_(sessions, am, present) {
+  var c = { 'มา': 0, 'สาย': 0, 'ลา': 0, 'ขาด': 0, 'กิจกรรม': 0 }, total = 0, ok = 0;
+  sessions.forEach(function (se) {
+    var a = am[se.sessionId], span = +se.span === 2 ? 2 : 1;
+    for (var k = 1; k <= span; k++) {
+      var st = a ? (k === 1 ? a.s1 : (a.s2 || a.s1)) : '';
+      if (!st) { if (se.state === 'open') continue; st = 'ขาด'; }
+      if (c[st] === undefined) continue;
+      c[st]++; total++;
+      if (present.indexOf(st) >= 0) ok++;
+    }
+  });
+  return { c: c, total: total, present: ok, pct: total ? Math.round(ok / total * 1000) / 10 : null };
+}
+function closeSession_(se, who) {
+  var g = find_('Groups', 'groupId', se.groupId), rooms = roomsOf_(g);
+  var att = rows_('Attendance').filter(function (a) { return a.sessionId === se.sessionId; });
+  var am = {};
+  att.forEach(function (a) { am[a.studentId] = a; });
+  var news = [];
+  stus_().forEach(function (s) {
+    if (rooms.indexOf(s.room) < 0) return;
+    var a = am[s.studentId];
+    if (!a) news.push({ sessionId: se.sessionId, studentId: s.studentId, s1: 'ขาด', s2: '', time: '', src: 'auto', dev: '' });
+    else if (!a.s1) upd_('Attendance', a._r, { s1: 'ขาด', src: 'auto' });
+  });
+  addMany_('Attendance', news);
+  upd_('Sessions', se._r, { state: 'closed', closedAt: Date.now(), exitOpen: '0', quizOpen: '0' });
+  log_(who, 'ปิดคาบ', se.sessionId, '', 'ขาด ' + news.length + ' คน');
+}
+
+function passCheck_(p) {
+  if (String(p.pass || '') !== cfg_().teacherPass) throw new Error('รหัสผ่านไม่ถูกต้อง');
+}
+/** "5/1, 5/2, 4/4+4/5" → 3 กลุ่ม ( , = แยกกลุ่ม · + = หลายห้องเรียนพร้อมกัน ) */
+function parseGroups_(text, subjectId) {
+  return String(text || '').split(',').map(function (part, i) {
+    var rooms = part.split('+').map(normRoom_).filter(String);
+    if (!rooms.length) return null;
+    return { groupId: id_('G') + i, subjectId: subjectId, label: 'ม.' + rooms.join('+'), rooms: rooms.join(',') };
+  }).filter(Boolean);
+}
+/** ลบกลุ่มเรียนพร้อมคาบ เช็คชื่อ exit ticket และช่องตารางสอน */
+function purgeGroup_(groupId) {
+  var ids = {}, n = 0;
+  rows_('Sessions').forEach(function (x) { if (x.groupId === groupId) { ids[x.sessionId] = 1; n++; } });
+  delWhere_('Attendance', function (a) { return ids[a.sessionId]; });
+  delWhere_('ExitTickets', function (a) { return ids[a.sessionId]; });
+  delWhere_('Sessions', function (x) { return x.groupId === groupId; });
+  delWhere_('Timetable', function (x) { return x.groupId === groupId; });
+  delWhere_('Groups', function (x) { return x.groupId === groupId; });
+  return n;
+}
+
+function closeExpired_(cfg) {
+  var stale = rows_('Sessions').filter(function (x) { return x.state === 'open' && expired_(x, cfg); });
+  stale.forEach(function (se) { closeSession_(se, 'ระบบ (หมดเวลา)'); });
+  return stale.length;
+}
+/** รันโดย trigger ทุก 10 นาที: ปิดคาบที่เลยเวลา คนที่ไม่เช็คชื่อ = ขาด */
+function autoClose() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return;
+  var cfg = cfg_();
+  try { closeExpired_(cfg); } finally { lock.releaseLock(); }
+  try { stuAuto_(cfg); } catch (e) {}
+}
+
+/* ---------- ไฟล์รูป (Google Drive) ---------- */
+var IMG_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+function folder_() {
+  var props = PropertiesService.getScriptProperties(), id = props.getProperty('folder');
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
+  var f = DriveApp.createFolder('Gradebook – ไฟล์แนบ');
+  props.setProperty('folder', f.getId());
+  return f;
+}
+/** dataURL → เก็บใน Drive คืน { driveId, mime } */
+function saveImg_(dataUrl, name, allowAny) {
+  var m = /^data:([\w\/+.-]+);base64,(.+)$/.exec(String(dataUrl || ''));
+  if (!m) throw new Error('ไฟล์รูปไม่ถูกต้อง');
+  if (!allowAny && IMG_MIME.indexOf(m[1]) < 0) throw new Error('รองรับเฉพาะ JPG / PNG / WEBP');
+  if (m[2].length > 2800000) throw new Error('รูปใหญ่เกินไป (เกิน 2 MB)');
+  var blob = Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], name);
+  return { driveId: folder_().createFile(blob).getId(), mime: m[1] };
+}
+function readImg_(f) {
+  var file = DriveApp.getFileById(f.driveId);
+  return 'data:' + (f.mime || file.getMimeType()) + ';base64,' + Utilities.base64Encode(file.getBlob().getBytes());
+}
+function trashImg_(f) { try { DriveApp.getFileById(f.driveId).setTrashed(true); } catch (e) {} }
+function filesOf_(pred) {
+  return rows_('Files').filter(pred).map(function (f) { return { fileId: f.fileId, itemId: f.itemId, studentId: f.studentId, time: f.time }; });
+}
+
+/* ---------- ควิซ ---------- */
+var QTYPES = ['mc', 'tf', 'num', 'short', 'text'];
+function parseNum_(v) {
+  var s = String(v === undefined || v === null ? '' : v).replace(/[,\s]/g, '').replace(/−/g, '-')
+    .replace(/(?:[×xX*·])10\^?/, 'e').replace(/\^/g, '');
+  return s === '' || isNaN(+s) ? NaN : +s;
+}
+function normTxt_(v) { return String(v || '').trim().toLowerCase().replace(/\s+/g, ''); }
+function seeded_(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return function () { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+}
+function shuffle_(arr, rnd) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
+function isQuizItem_(itemId) { return rows_('Quizzes').some(function (q) { return q.itemId === itemId; }); }
+function qs_(qz) { try { return JSON.parse(qz.qs || '[]'); } catch (e) { return []; } }
+/** ตรวจ 1 ข้อ: true / false / null (= ครูตรวจเอง) */
+function checkQ_(q, a) {
+  if (q.type === 'text') return null;
+  if (a === undefined || a === null || String(a).trim() === '') return false;
+  if (q.type === 'mc') return String(+a) === String(+q.ans);
+  if (q.type === 'tf') return String(a) === String(q.ans);
+  if (q.type === 'num') {
+    var x = parseNum_(a), ans = +q.ans, tol = q.tol === '' || q.tol === undefined ? 1 : +q.tol;
+    if (isNaN(x)) return false;
+    return Math.abs(x - ans) <= (ans === 0 ? 1e-9 : Math.abs(ans) * tol / 100) + 1e-12;
+  }
+  if (q.type === 'short') return (q.ans || []).some(function (k) { return normTxt_(k) === normTxt_(a); });
+  return false;
+}
+function grade_q_(qz, ans, old) {
+  var prev = {};
+  (old || []).forEach(function (d) { prev[d.id] = d; });
+  var detail = qs_(qz).map(function (q) {
+    var ok = checkQ_(q, ans[q.id]), pts = +q.pts || 1;
+    if (ok === null) { var p = prev[q.id]; return { id: q.id, ok: null, pts: pts, got: p && p.got !== null && p.got !== undefined ? p.got : null }; }
+    return { id: q.id, ok: ok, pts: pts, got: ok ? pts : 0 };
+  });
+  var score = detail.reduce(function (s, d) { return s + (+d.got || 0); }, 0);
+  return { detail: detail, score: Math.round(score * 100) / 100 };
+}
+function quizScore_(qz, studentId, score) {
+  if (!qz.itemId) return;
+  var sc = rows_('Scores').filter(function (x) { return x.itemId === qz.itemId && x.studentId === studentId; })[0];
+  var o = { sub: 'ส่ง', score: String(score) };
+  if (sc) upd_('Scores', sc._r, o); else add_('Scores', { itemId: qz.itemId, studentId: studentId, sub: o.sub, score: o.score });
+}
+function pubResult_(qz, row) {
+  var it = rows_('Items').filter(function (i) { return i.itemId === qz.itemId; })[0];
+  if (it && it.hide === '1') return { done: true, hidden: true };
+  var d = JSON.parse(row.detail || '[]');
+  return { done: true, score: +row.score, max: d.reduce(function (s, x) { return s + x.pts; }, 0),
+    detail: d.map(function (x) { return { id: x.id, ok: x.ok, got: x.got, pts: x.pts }; }) };
+}
+
+/* ---------- ตามงาน ---------- */
+/** s ส่ง · l ช้า · w รอยืนยัน · m ค้าง (เลยกำหนด) · o ยังไม่ส่ง (ยังไม่ถึงกำหนด/ไม่มีกำหนด) · z ไม่ส่ง ให้คะแนนแล้ว */
+function taskStat_(it, x, today) {
+  if (x && x.sub === 'ช้า') return 'l';
+  if (x && x.sub === 'ส่ง') return 's';
+  if (x && x.sub === 'รอ') return 'w';
+  if (x && x.score !== '' && x.score !== undefined) return 'z';
+  if (it.due && today > it.due) return 'm';
+  return 'o';
+}
+
+/* ---------- คุณลักษณะอันพึงประสงค์ / อ่าน คิดวิเคราะห์ เขียน ---------- */
+var TRAIT_KINDS = ['char', 'rtw'];
+var TRAIT_DEF = {
+  char: ['รักชาติ ศาสน์ กษัตริย์', 'ซื่อสัตย์สุจริต', 'มีวินัย', 'ใฝ่เรียนรู้', 'อยู่อย่างพอเพียง', 'มุ่งมั่นในการทำงาน', 'รักความเป็นไทย', 'มีจิตสาธารณะ'],
+  rtw: ['อ่านเพื่อหาข้อมูลสารสนเทศเสริมประสบการณ์จากสื่อประเภทต่าง ๆ', 'จับประเด็นสำคัญ เปรียบเทียบ เชื่อมโยงความเป็นเหตุเป็นผลจากเรื่องที่อ่าน',
+    'เชื่อมโยงความสัมพันธ์ของเรื่องราว เหตุการณ์ของเรื่องที่อ่าน', 'แสดงความคิดเห็นต่อเรื่องที่อ่านโดยมีเหตุผลสนับสนุน', 'เขียนถ่ายทอดความเข้าใจ ความคิดเห็น การวิเคราะห์ วิจารณ์ และสร้างสรรค์']
+};
+function traitList_(cfg, kind) {
+  var v = String(cfg[kind + 'List'] || '').split('\n').map(function (x) { return x.trim(); }).filter(String);
+  return v.length ? v : TRAIT_DEF[kind];
+}
+/** สรุประดับ: เฉลี่ยจากตัวชี้วัดที่ประเมินแล้ว ≥2.5 = 3 ดีเยี่ยม, ≥1.5 = 2 ดี, ≥1 = 1 ผ่าน, ต่ำกว่า = 0 ไม่ผ่าน */
+function traitLevel_(vals) {
+  var v = vals.filter(function (x) { return x !== '' && x !== null && x !== undefined; }).map(Number);
+  if (!v.length) return null;
+  var avg = v.reduce(function (a, b) { return a + b; }, 0) / v.length;
+  return { avg: Math.round(avg * 100) / 100, level: avg >= 2.5 ? 3 : avg >= 1.5 ? 2 : avg >= 1 ? 1 : 0, n: v.length };
+}
+function traitsOf_(subjectId, studentId, cfg, rows) {
+  var out = {};
+  TRAIT_KINDS.forEach(function (k) {
+    var list = traitList_(cfg, k), vals = list.map(function () { return ''; });
+    rows.forEach(function (r) { if (r.subjectId === subjectId && r.studentId === studentId && r.kind === k && +r.idx < list.length) vals[+r.idx] = r.val; });
+    out[k] = { vals: vals, sum: traitLevel_(vals) };
+  });
+  return out;
+}
+
+/* ---------- API ---------- */
+var API = {
+  /* ===== นักเรียน ===== */
+  sLookup: function (p) {
+    var id = String(p.id || '').trim();
+    var s = allStus_().filter(function (x) { return x.studentId === id; })[0];
+    if (!s) {
+      if (!/^[A-Za-z0-9]{3,15}$/.test(id)) throw new Error('เลขประจำตัวต้องเป็นตัวเลขหรือตัวอักษร 3–15 ตัว');
+      return { notFound: true, rooms: allRooms_() };
+    }
+    if (s.active === '0') throw new Error('เลขประจำตัวนี้ถูกปิดใช้งาน แจ้งครู');
+    return { name: s.name.trim().split(/\s+/)[0], room: s.room, hasPin: !!s.pin, locked: (+s.fail || 0) >= 5, nick: s.nick || '' };
+  },
+  sSelfRegister: function (p) {
+    var id = String(p.id || '').trim();
+    if (!/^[A-Za-z0-9]{3,15}$/.test(id)) throw new Error('เลขประจำตัวต้องเป็นตัวเลขหรือตัวอักษร 3–15 ตัว');
+    if (allStus_().some(function (x) { return x.studentId === id; })) throw new Error('เลขประจำตัวนี้มีในระบบแล้ว กลับไปกรอกใหม่');
+    if (!/^\d{4}$/.test(String(p.pin || ''))) throw new Error('รหัสต้องเป็นตัวเลข 4 หลัก');
+    var v = checkStu_(p, id);
+    if (allRooms_().indexOf(v.room) < 0) throw new Error('ไม่พบห้องนี้ในรายวิชาที่ครูสอน');
+    var token = Utilities.getUuid();
+    var row = { studentId: id, room: v.room, no: v.no, name: v.name, pin: hash_('P|' + id + '|' + p.pin), device: token, fail: 0, active: '1', nick: v.nick, self: '1' };
+    add_('Students', row);
+    log_('นักเรียน ' + id, 'ลงทะเบียนเอง', id + ' ' + v.name, '', 'ม.' + v.room + ' เลขที่ ' + v.no + (v.nick ? ' (' + v.nick + ')' : ''));
+    return { token: token, me: me_(row) };
+  },
+  sRegister: function (p) {
+    var s = stu_(p.id);
+    if ((+s.fail || 0) >= 5) throw new Error('รหัสถูกล็อกเพราะใส่ผิดหลายครั้ง แจ้งครูให้รีเซ็ต');
+    if (!/^\d{4}$/.test(String(p.pin || ''))) throw new Error('รหัสต้องเป็นตัวเลข 4 หลัก');
+    var h = hash_('P|' + s.studentId + '|' + p.pin);
+    if (!s.pin) upd_('Students', s._r, p.nick !== undefined ? { pin: h, nick: String(p.nick || '').trim().slice(0, 30) } : { pin: h });
+    else if (s.pin !== h) {
+      upd_('Students', s._r, { fail: (+s.fail || 0) + 1 });
+      return { error: 'รหัส 4 หลักไม่ถูกต้อง' };
+    }
+    var token = Utilities.getUuid();
+    if (s.device) log_('นักเรียน ' + s.studentId, 'เปลี่ยนเครื่อง', s.studentId + ' ' + s.name, '', '');
+    upd_('Students', s._r, { device: token, fail: 0 });
+    return { token: token, me: me_(s) };
+  },
+  sInit: function (p) {
+    var s = byToken_(p.token);
+    if (!s) return { me: null };
+    var cfg = cfg_(), groups = rows_('Groups'), out = { me: me_(s), sessions: [] };
+    var open = rows_('Sessions').filter(function (x) {
+      if (x.state !== 'open' || expired_(x, cfg)) return false;
+      var g = groups.filter(function (g) { return g.groupId === x.groupId; })[0];
+      return g && roomsOf_(g).indexOf(s.room) >= 0;
+    });
+    if (!open.length) return out;
+    var att = rows_('Attendance'), ex = rows_('ExitTickets');
+    open.forEach(function (se) {
+      var g = groups.filter(function (g) { return g.groupId === se.groupId; })[0];
+      var a = att.filter(function (a) { return a.sessionId === se.sessionId && a.studentId === s.studentId; })[0];
+      var r = { sessionId: se.sessionId, label: g.label, period: se.period, span: se.span };
+      if (!a || !a.s1) {
+        var other = p.dev && att.some(function (x) { return x.sessionId === se.sessionId && x.dev === p.dev && x.studentId !== s.studentId; });
+        if (other) r.blocked = true;
+        else {
+          var st = (Date.now() - Number(se.openedAt)) / 60000 > (+cfg.lateMin || 10) ? 'สาย' : 'มา', tm = t_();
+          if (a) upd_('Attendance', a._r, { s1: st, time: tm, src: 'nfc', dev: p.dev || '' });
+          else add_('Attendance', { sessionId: se.sessionId, studentId: s.studentId, s1: st, s2: '', time: tm, src: 'nfc', dev: p.dev || '' });
+          r.status = st; r.time = tm; r.fresh = true;
+        }
+      } else { r.status = a.s1; r.time = a.time; }
+      if (se.quizOpen === '1' && se.quizId) {
+        var qz = rows_('Quizzes').filter(function (q) { return q.quizId === se.quizId; })[0];
+        if (qz) {
+          var qa = rows_('QuizAns').filter(function (r) { return r.quizId === qz.quizId && r.studentId === s.studentId; })[0];
+          r.quiz = { title: qz.title, n: qs_(qz).length, timeLimit: +qz.timeLimit || 0, done: !!(qa && qa.end), started: !!qa };
+        }
+      }
+      if (se.exitOpen === '1') {
+        r.exit = { q: se.exitQ, done: ex.some(function (e) { return e.sessionId === se.sessionId && e.studentId === s.studentId; }) };
+      }
+      out.sessions.push(r);
+    });
+    return out;
+  },
+  sExit: function (p) {
+    var s = byToken_(p.token);
+    if (!s) throw new Error('กรุณาลงทะเบียนเครื่องใหม่');
+    var se = find_('Sessions', 'sessionId', p.sessionId, 'ไม่พบคาบเรียน');
+    if (se.exitOpen !== '1') throw new Error('Exit ticket ปิดรับคำตอบแล้ว');
+    var g = find_('Groups', 'groupId', se.groupId);
+    if (roomsOf_(g).indexOf(s.room) < 0) throw new Error('ไม่ใช่คาบของห้องนี้');
+    var rating = Math.max(1, Math.min(5, Math.round(+p.rating || 0))) || '';
+    var ans = String(p.answer || '').slice(0, 1000);
+    var e = rows_('ExitTickets').filter(function (e) { return e.sessionId === se.sessionId && e.studentId === s.studentId; })[0];
+    if (e) upd_('ExitTickets', e._r, { rating: rating, answer: ans, time: t_() });
+    else add_('ExitTickets', { sessionId: se.sessionId, studentId: s.studentId, rating: rating, answer: ans, time: t_() });
+    if (se.exitItemId) {
+      var sc = rows_('Scores').filter(function (x) { return x.itemId === se.exitItemId && x.studentId === s.studentId; })[0];
+      if (!sc) add_('Scores', { itemId: se.exitItemId, studentId: s.studentId, sub: 'ส่ง', score: '' });
+      else if (!sc.sub || sc.sub === 'รอ') upd_('Scores', sc._r, { sub: 'ส่ง' });
+    }
+    return true;
+  },
+  sSubmit: function (p) {
+    var s = byToken_(p.token);
+    if (!s) throw new Error('กรุณาลงทะเบียนเครื่องใหม่');
+    var it = find_('Items', 'itemId', p.itemId, 'ไม่พบงานนี้');
+    if (it.cat !== 'pre' && it.cat !== 'post' || isQuizItem_(it.itemId)) throw new Error('รายการนี้กดส่งเองไม่ได้');
+    var mine = rows_('Groups').some(function (g) { return g.subjectId === it.subjectId && roomsOf_(g).indexOf(s.room) >= 0; });
+    if (!mine) throw new Error('ไม่ใช่งานของห้องนี้');
+    var sc = rows_('Scores').filter(function (x) { return x.itemId === it.itemId && x.studentId === s.studentId; })[0];
+    var cur = sc ? sc.sub : '', nv;
+    if (cur === 'ส่ง' || cur === 'ช้า') throw new Error('ครูยืนยันการส่งงานนี้แล้ว');
+    if (p.want === 'รอ' || p.want === '') nv = p.want; else nv = cur === '' ? 'รอ' : '';
+    if (nv === cur) return { sub: cur };
+    if (sc) upd_('Scores', sc._r, { sub: nv, subAt: nv ? d_() : '' });
+    else add_('Scores', { itemId: it.itemId, studentId: s.studentId, sub: nv, score: '', subAt: nv ? d_() : '' });
+    log_('นักเรียน ' + s.studentId, nv ? 'กดส่งงาน (รอยืนยัน)' : 'ยกเลิกการกดส่ง', it.label + '|' + s.studentId, cur, nv);
+    return { sub: nv };
+  },
+  sUpload: function (p) {
+    var s = byToken_(p.token);
+    if (!s) throw new Error('กรุณาลงทะเบียนเครื่องใหม่');
+    var it = find_('Items', 'itemId', p.itemId, 'ไม่พบงานนี้');
+    if (it.cat !== 'pre' && it.cat !== 'post' || isQuizItem_(it.itemId)) throw new Error('แนบรูปในรายการนี้ไม่ได้');
+    if (!rows_('Groups').some(function (g) { return g.subjectId === it.subjectId && roomsOf_(g).indexOf(s.room) >= 0; })) throw new Error('ไม่ใช่งานของห้องนี้');
+    var sc = rows_('Scores').filter(function (x) { return x.itemId === it.itemId && x.studentId === s.studentId; })[0];
+    if (sc && sc.score !== '') throw new Error('ครูให้คะแนนงานนี้แล้ว แนบเพิ่มไม่ได้');
+    var mine = rows_('Files').filter(function (f) { return f.kind === 'sub' && f.itemId === it.itemId && f.studentId === s.studentId; });
+    if (mine.length >= 4) throw new Error('แนบได้สูงสุด 4 รูปต่องาน');
+    var hs = hash_('F|' + String(p.data || '').length + '|' + String(p.data || '').slice(-4000));
+    var same = mine.filter(function (f) { return f.hash === hs; })[0];
+    if (same) return { fileId: same.fileId, sub: sc && sc.sub ? sc.sub : 'รอ', dup: true };
+    var sv = saveImg_(p.data, it.itemId + '_' + s.studentId + '_' + Date.now() + '.jpg');
+    var f = { fileId: id_('F'), kind: 'sub', itemId: it.itemId, studentId: s.studentId, driveId: sv.driveId, mime: sv.mime, time: d_() + ' ' + t_(), hash: hs };
+    add_('Files', f);
+    if (!sc) add_('Scores', { itemId: it.itemId, studentId: s.studentId, sub: 'รอ', score: '', subAt: d_() });
+    else if (!sc.sub) upd_('Scores', sc._r, { sub: 'รอ', subAt: d_() });
+    log_('นักเรียน ' + s.studentId, 'แนบรูป', it.label + '|' + s.studentId, '', f.fileId);
+    return { fileId: f.fileId, sub: sc && sc.sub ? sc.sub : 'รอ' };
+  },
+  sFileDel: function (p) {
+    var s = byToken_(p.token);
+    if (!s) throw new Error('กรุณาลงทะเบียนเครื่องใหม่');
+    var f = find_('Files', 'fileId', p.fileId, 'ไม่พบรูป');
+    if (f.kind !== 'sub' || f.studentId !== s.studentId) throw new Error('ลบรูปนี้ไม่ได้');
+    var sc = rows_('Scores').filter(function (x) { return x.itemId === f.itemId && x.studentId === s.studentId; })[0];
+    if (sc && (sc.sub === 'ส่ง' || sc.sub === 'ช้า' || sc.score !== '')) throw new Error('ครูยืนยันงานนี้แล้ว ลบรูปไม่ได้');
+    trashImg_(f);
+    delWhere_('Files', function (x) { return x.fileId === f.fileId; });
+    log_('นักเรียน ' + s.studentId, 'ลบรูป', f.itemId + '|' + s.studentId, f.fileId, '');
+    return true;
+  },
+  sImg: function (p) {
+    var s = byToken_(p.token);
+    if (!s) throw new Error('กรุณาลงทะเบียนเครื่องใหม่');
+    var f = find_('Files', 'fileId', p.fileId, 'ไม่พบรูป');
+    if (f.kind === 'sub' && f.studentId !== s.studentId) throw new Error('ไม่มีสิทธิ์ดูรูปนี้');
+    return readImg_(f);
+  },
+  sQuizStart: function (p) {
+    var s = byToken_(p.token);
+    if (!s) throw new Error('กรุณาลงทะเบียนเครื่องใหม่');
+    var se = find_('Sessions', 'sessionId', p.sessionId, 'ไม่พบคาบเรียน');
+    var qz = find_('Quizzes', 'quizId', se.quizId, 'ไม่พบควิซ');
+    var row = rows_('QuizAns').filter(function (r) { return r.quizId === qz.quizId && r.studentId === s.studentId; })[0];
+    if (row && row.end) return pubResult_(qz, row);
+    if (!row) {
+      if (se.quizOpen !== '1' || se.state !== 'open') throw new Error('ควิซปิดแล้ว');
+      if (roomsOf_(find_('Groups', 'groupId', se.groupId)).indexOf(s.room) < 0) throw new Error('ไม่ใช่ควิซของห้องนี้');
+      row = { quizId: qz.quizId, studentId: s.studentId, sessionId: se.sessionId, start: Date.now(), end: '', ans: '', score: '', detail: '' };
+      add_('QuizAns', row);
+      log_('นักเรียน ' + s.studentId, 'เริ่มควิซ', qz.title, '', '');
+    }
+    var rnd = seeded_(qz.quizId + '|' + s.studentId), lim = +qz.timeLimit || 0;
+    var qs = shuffle_(qs_(qz), rnd).map(function (q) {
+      var o = { id: q.id, type: q.type, q: q.q, pts: +q.pts || 1, img: q.img || '' };
+      if (q.type === 'mc') o.choices = shuffle_(q.choices.map(function (t, k) { return { k: k, t: t }; }), rnd);
+      if (q.type === 'num') o.unit = q.unit || '';
+      return o;
+    });
+    return { done: false, title: qz.title, qs: qs, left: lim ? Math.max(0, Math.round((+row.start + lim * 60000 - Date.now()) / 1000)) : null };
+  },
+  sQuizSubmit: function (p) {
+    var s = byToken_(p.token);
+    if (!s) throw new Error('กรุณาลงทะเบียนเครื่องใหม่');
+    var se = find_('Sessions', 'sessionId', p.sessionId, 'ไม่พบคาบเรียน');
+    var qz = find_('Quizzes', 'quizId', se.quizId, 'ไม่พบควิซ');
+    var row = rows_('QuizAns').filter(function (r) { return r.quizId === qz.quizId && r.studentId === s.studentId; })[0];
+    if (!row) throw new Error('ยังไม่ได้เริ่มทำควิซ');
+    if (row.end) return pubResult_(qz, row);
+    var ans = {}, src = p.answers || {};
+    qs_(qz).forEach(function (q) { if (src[q.id] !== undefined) ans[q.id] = String(src[q.id]).slice(0, 2000); });
+    var g = grade_q_(qz, ans), lim = +qz.timeLimit || 0;
+    var late = lim && Date.now() > +row.start + lim * 60000 + 120000;
+    upd_('QuizAns', row._r, { end: Date.now(), ans: JSON.stringify(ans), score: g.score, detail: JSON.stringify(g.detail.map(function (d) { if (late) d.late = 1; return d; })) });
+    quizScore_(qz, s.studentId, g.score);
+    log_('นักเรียน ' + s.studentId, 'ส่งควิซ', qz.title, '', g.score + (late ? ' (เกินเวลา)' : ''));
+    return pubResult_(qz, rows_('QuizAns').filter(function (r) { return r._r === row._r; })[0]);
+  },
+  sForgot: function (p) {
+    var s = stu_(p.id);
+    if (!s.pin) return { ok: true, noPin: true };
+    if (!s.resetReq) {
+      upd_('Students', s._r, { resetReq: d_() + ' ' + t_() });
+      log_('นักเรียน ' + s.studentId, 'ขอรีเซ็ตรหัส', s.studentId, '', '');
+    }
+    return { ok: true };
+  },
+  sQuizLeave: function (p) {
+    var s = byToken_(p.token);
+    if (!s) return 0;
+    var se = rows_('Sessions').filter(function (x) { return x.sessionId === p.sessionId; })[0];
+    if (!se || !se.quizId) return 0;
+    var row = rows_('QuizAns').filter(function (r) { return r.quizId === se.quizId && r.studentId === s.studentId; })[0];
+    if (!row || row.end) return 0;
+    var n = (+row.leaves || 0) + 1;
+    upd_('QuizAns', row._r, { leaves: n });
+    return n;
+  },
+  sScores: function (p) {
+    var s = byToken_(p.token);
+    if (!s) throw new Error('กรุณาลงทะเบียนเครื่องใหม่');
+    var cfg = cfg_(), subs = rows_('Subjects'), items = rows_('Items'), sess = rows_('Sessions');
+    var groups = rows_('Groups').filter(function (g) { return roomsOf_(g).indexOf(s.room) >= 0; });
+    var sm = {}, am = {}, fm = {}, qi = {}, trRows = rows_('Traits').filter(function (r) { return r.studentId === s.studentId; });
+    rows_('Quizzes').forEach(function (q) { qi[q.itemId] = 1; });
+    rows_('Scores').forEach(function (x) { if (x.studentId === s.studentId) sm[x.itemId] = x; });
+    filesOf_(function (f) { return f.kind === 'sub' && f.studentId === s.studentId; }).forEach(function (f) { (fm[f.itemId] = fm[f.itemId] || []).push(f.fileId); });
+    rows_('Attendance').forEach(function (a) { if (a.studentId === s.studentId) am[a.sessionId] = a; });
+    return {
+      me: me_(s), today: d_(), msPct: +cfg.msPct || 80,
+      subjects: groups.map(function (g) {
+        var sb = subs.filter(function (x) { return x.subjectId === g.subjectId; })[0] || {};
+        var its = sortItems_(items.filter(function (i) { return i.subjectId === g.subjectId; }));
+        var net = calcNet_(sb, its, sm), anyHide = false;
+        CATS.forEach(function (c) {
+          if (its.some(function (i) { return i.cat === c && i.hide === '1'; })) { net.cats[c].net = null; net.cats[c].got = null; anyHide = true; }
+        });
+        if (anyHide) net.total = null;
+        return {
+          label: g.label, code: sb.code, name: sb.name, net: net, traits: (function (t) { return { char: t.char.sum, rtw: t.rtw.sum }; })(traitsOf_(g.subjectId, s.studentId, cfg, trRows)),
+          grade: cfg.showGrade === '1' && !anyHide ? grade_(net.total, cuts_(cfg)) : null,
+          items: its.map(function (i) {
+            var x = sm[i.itemId] || {}, h = i.hide === '1';
+            return { itemId: i.itemId, cat: i.cat, label: i.label, max: i.max, due: i.due || '', sub: x.sub || '', hidden: h, quiz: !!qi[i.itemId], files: fm[i.itemId] || [], score: h || x.score === undefined ? '' : x.score };
+          }),
+          att: attSum_(sess.filter(function (x) { return x.groupId === g.groupId; }), am, present_(cfg))
+        };
+      })
+    };
+  },
+
+  /* ===== ครู ===== */
+  tLogin: function (p) {
+    var pass = cfg_().teacherPass;
+    if (!pass || String(p.pass || '') !== pass) throw new Error('รหัสผ่านไม่ถูกต้อง');
+    return { t: tTok_() };
+  },
+  tBoot: function () {
+    var cfg = cfg_();
+    closeExpired_(cfg);
+    var sess = rows_('Sessions');
+    var safe = {};
+    Object.keys(cfg).forEach(function (k) { if (k !== 'teacherPass') safe[k] = cfg[k]; });
+    return {
+      today: d_(), dow: Number(Utilities.formatDate(new Date(), TZ, 'u')), cfg: safe,
+      subjects: rows_('Subjects'), groups: rows_('Groups'), timetable: rows_('Timetable'),
+      items: rows_('Items'),
+      students: allStus_().map(function (s) {
+        return { studentId: s.studentId, room: s.room, no: s.no, name: s.name, nick: s.nick || '', self: s.self === '1', active: s.active !== '0', hasPin: !!s.pin, hasDev: !!s.device, locked: (+s.fail || 0) >= 5, resetReq: s.resetReq || '' };
+      }),
+      open: sess.filter(function (x) { return x.state === 'open'; })
+    };
+  },
+  tOpen: function (p) {
+    find_('Groups', 'groupId', p.groupId, 'ไม่พบกลุ่มเรียน');
+    if (!p.closed) {
+      var ex = rows_('Sessions').filter(function (x) { return x.groupId === p.groupId && x.state === 'open'; })[0];
+      if (ex) return ex;
+    }
+    var se = {
+      sessionId: id_('S'), groupId: p.groupId, date: p.date || d_(), period: p.period || '', span: +p.span === 2 ? 2 : 1,
+      openedAt: Date.now(), closedAt: p.closed ? Date.now() : '', state: p.closed ? 'closed' : 'open',
+      exitQ: '', exitOpen: '0', exitItemId: '', note: ''
+    };
+    add_('Sessions', se);
+    log_('ครู', p.closed ? 'เพิ่มคาบย้อนหลัง' : 'เปิดคาบ', se.sessionId, '', p.groupId + ' ' + se.date + ' คาบ ' + se.period);
+    return find_('Sessions', 'sessionId', se.sessionId);
+  },
+  tLive: function (p) {
+    return {
+      session: find_('Sessions', 'sessionId', p.sessionId, 'ไม่พบคาบเรียน'),
+      att: rows_('Attendance').filter(function (a) { return a.sessionId === p.sessionId; }),
+      exits: rows_('ExitTickets').filter(function (e) { return e.sessionId === p.sessionId; }),
+      quizDone: rows_('QuizAns').filter(function (r) { return r.sessionId === p.sessionId && r.end; }).map(function (r) { return r.studentId; }),
+      quizLeaves: rows_('QuizAns').filter(function (r) { return r.sessionId === p.sessionId && +r.leaves > 0; }).map(function (r) { return { studentId: r.studentId, n: +r.leaves, done: !!r.end }; }),
+      stu: (function () { var se = find_('Sessions', 'sessionId', p.sessionId, 'ไม่พบคาบเรียน'); return stuState_(se, rows_('Attendance')); })()
+    };
+  },
+  tSetAtt: function (p) {
+    if (p.status && ST.indexOf(p.status) < 0) throw new Error('สถานะไม่ถูกต้อง');
+    var col = +p.k === 2 ? 's2' : 's1';
+    var a = rows_('Attendance').filter(function (a) { return a.sessionId === p.sessionId && a.studentId === p.studentId; })[0];
+    var old = a ? a[col] : '', o = {};
+    if (a) {
+      o[col] = p.status || '';
+      if (col === 's1') o.src = 'manual';
+      upd_('Attendance', a._r, o);
+    } else {
+      o = { sessionId: p.sessionId, studentId: p.studentId, s1: '', s2: '', time: t_(), src: 'manual', dev: '' };
+      o[col] = p.status || '';
+      add_('Attendance', o);
+    }
+    log_('ครู', 'เช็คชื่อ', p.sessionId + '|' + p.studentId + '|คาบ' + (+p.k === 2 ? 2 : 1), old, p.status || '', { a: 'tSetAtt', p: { sessionId: p.sessionId, studentId: p.studentId, k: p.k, status: old } });
+    return true;
+  },
+  tFill: function (p) {
+    if (ST.indexOf(p.status) < 0) throw new Error('สถานะไม่ถูกต้อง');
+    var se = find_('Sessions', 'sessionId', p.sessionId), g = find_('Groups', 'groupId', se.groupId), rooms = roomsOf_(g);
+    var am = {}, news = [], n = 0, all = !!p.all, before = [];
+    rows_('Attendance').forEach(function (a) { if (a.sessionId === se.sessionId) am[a.studentId] = a; });
+    stus_().forEach(function (s) {
+      if (rooms.indexOf(s.room) < 0) return;
+      var a = am[s.studentId];
+      before.push({ studentId: s.studentId, s1: a ? a.s1 : '', s2: a ? a.s2 : '' });
+      if (!a) { news.push({ sessionId: se.sessionId, studentId: s.studentId, s1: p.status, s2: '', time: t_(), src: 'manual', dev: '' }); n++; }
+      else if (!a.s1 || (all && (a.s1 !== p.status || a.s2))) { upd_('Attendance', a._r, { s1: p.status, s2: '', src: 'manual' }); n++; }
+    });
+    addMany_('Attendance', news);
+    log_('ครู', all ? 'ตั้งสถานะทั้งห้อง' : 'เติมสถานะที่ว่าง', se.sessionId, '', p.status + ' ' + n + ' คน', n ? { a: 'tAttRestore', p: { sessionId: se.sessionId, items: before } } : null);
+    return n;
+  },
+  tAttRestore: function (p) {
+    var am = {}, n = 0;
+    rows_('Attendance').forEach(function (a) { if (a.sessionId === p.sessionId) am[a.studentId] = a; });
+    var cur = [];
+    (p.items || []).forEach(function (x) {
+      var a = am[x.studentId];
+      cur.push({ studentId: x.studentId, s1: a ? a.s1 : '', s2: a ? a.s2 : '' });
+      if (a) { if (a.s1 !== (x.s1 || '') || a.s2 !== (x.s2 || '')) { upd_('Attendance', a._r, { s1: x.s1 || '', s2: x.s2 || '', src: 'manual' }); n++; } }
+      else if (x.s1 || x.s2) { add_('Attendance', { sessionId: p.sessionId, studentId: x.studentId, s1: x.s1 || '', s2: x.s2 || '', time: t_(), src: 'manual', dev: '' }); n++; }
+    });
+    log_('ครู', 'เรียกคืนเช็คชื่อทั้งห้อง', p.sessionId, '', n + ' คน', { a: 'tAttRestore', p: { sessionId: p.sessionId, items: cur } });
+    return n;
+  },
+  tClose: function (p) {
+    closeSession_(find_('Sessions', 'sessionId', p.sessionId), 'ครู');
+    return true;
+  },
+  tReopen: function (p) {
+    var se = find_('Sessions', 'sessionId', p.sessionId);
+    upd_('Sessions', se._r, { state: 'open', openedAt: Date.now(), closedAt: '' });
+    log_('ครู', 'เปิดคาบอีกครั้ง', se.sessionId, '', '');
+    return true;
+  },
+  tSesUpdate: function (p) {
+    var se = find_('Sessions', 'sessionId', p.sessionId), f = p.fields || {}, o = {};
+    if (f.quizOpen === '1' || f.quizOpen === 1) {
+      var qz = find_('Quizzes', 'quizId', String(f.quizId || se.quizId), 'เลือกควิซก่อน');
+      if (qz.subjectId !== find_('Groups', 'groupId', se.groupId).subjectId) throw new Error('ควิซนี้ไม่ใช่ของวิชานี้');
+    }
+    ['exitQ', 'exitOpen', 'exitItemId', 'note', 'span', 'date', 'period', 'quizId', 'quizOpen'].forEach(function (k) {
+      if (f[k] !== undefined) o[k] = String(f[k]);
+    });
+    var item = null;
+    if (p.makeItem) {
+      var g = find_('Groups', 'groupId', se.groupId);
+      item = {
+        itemId: id_('I'), subjectId: g.subjectId, cat: CATS.indexOf(p.makeItem.cat) >= 0 ? p.makeItem.cat : 'pre',
+        label: String(p.makeItem.label || 'Exit ticket ' + se.date), max: +p.makeItem.max || 5, ord: Date.now()
+      };
+      add_('Items', item);
+      o.exitItemId = item.itemId;
+    }
+    upd_('Sessions', se._r, o);
+    log_('ครู', 'แก้ข้อมูลคาบ', se.sessionId, '', JSON.stringify(o));
+    return { session: find_('Sessions', 'sessionId', se.sessionId), item: item ? find_('Items', 'itemId', item.itemId) : null };
+  },
+  tSesDel: function (p) {
+    var se = find_('Sessions', 'sessionId', p.sessionId);
+    var n = delWhere_('Attendance', function (a) { return a.sessionId === p.sessionId; });
+    delWhere_('ExitTickets', function (a) { return a.sessionId === p.sessionId; });
+    delWhere_('Sessions', function (a) { return a.sessionId === p.sessionId; });
+    log_('ครู', 'ลบคาบ', p.sessionId, se.groupId + ' ' + se.date + ' คาบ ' + se.period + ' (' + n + ' รายการ)', '');
+    return true;
+  },
+  tAttGrid: function (p) {
+    var sess = rows_('Sessions').filter(function (x) { return x.groupId === p.groupId; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (+a.period - +b.period); });
+    var ids = {};
+    sess.forEach(function (x) { ids[x.sessionId] = 1; });
+    var att = rows_('Attendance').filter(function (a) { return ids[a.sessionId]; });
+    sess.forEach(function (x) { x.stu = stuState_(x, att); });
+    return { sessions: sess, att: att };
+  },
+  tItemSave: function (p) {
+    if (CATS.indexOf(p.cat) < 0) throw new Error('หมวดคะแนนไม่ถูกต้อง');
+    if (!String(p.label || '').trim()) throw new Error('กรุณาตั้งชื่อช่องคะแนน');
+    if (!(+p.max > 0)) throw new Error('คะแนนเต็มต้องมากกว่า 0');
+    var due = p.due === undefined ? undefined : String(p.due || '').trim();
+    if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) throw new Error('วันกำหนดส่งไม่ถูกต้อง');
+    if (p.itemId) {
+      var it = find_('Items', 'itemId', p.itemId, 'ไม่พบช่องคะแนน');
+      var o = { cat: p.cat, label: String(p.label).trim(), max: +p.max };
+      if (p.ord !== undefined) o.ord = p.ord;
+      if (due !== undefined) o.due = due;
+      upd_('Items', it._r, o);
+      log_('ครู', 'แก้ช่องคะแนน', p.itemId, it.label + ' /' + it.max + ' [' + it.cat + ']' + (it.due ? ' ส่ง ' + it.due : ''), o.label + ' /' + o.max + ' [' + o.cat + ']' + (o.due ? ' ส่ง ' + o.due : ''),
+        { a: 'tItemSave', p: { itemId: it.itemId, label: it.label, max: it.max, cat: it.cat, due: it.due || '' } });
+      return find_('Items', 'itemId', p.itemId);
+    }
+    find_('Subjects', 'subjectId', p.subjectId, 'ไม่พบวิชา');
+    var n = { itemId: id_('I'), subjectId: p.subjectId, cat: p.cat, label: String(p.label).trim(), max: +p.max, ord: Date.now(), hide: '0', due: due || '' };
+    add_('Items', n);
+    log_('ครู', 'เพิ่มช่องคะแนน', n.itemId, '', n.label + ' /' + n.max + ' [' + n.cat + ']');
+    return find_('Items', 'itemId', n.itemId);
+  },
+  tItemHide: function (p) {
+    var v = p.hide ? '1' : '0', n = 0;
+    rows_('Items').forEach(function (i) {
+      if ((p.itemId && i.itemId === p.itemId) || (!p.itemId && p.subjectId && i.subjectId === p.subjectId)) {
+        if (i.hide !== v) { upd_('Items', i._r, { hide: v }); n++; }
+      }
+    });
+    log_('ครู', v === '1' ? 'ซ่อนคะแนนจากนักเรียน' : 'แสดงคะแนนให้นักเรียน', p.itemId || p.subjectId, '', n + ' ช่อง');
+    return n;
+  },
+  tItemDel: function (p) {
+    var it = find_('Items', 'itemId', p.itemId, 'ไม่พบช่องคะแนน');
+    var n = delWhere_('Scores', function (x) { return x.itemId === p.itemId; });
+    rows_('Files').forEach(function (f) { if (f.kind === 'sub' && f.itemId === p.itemId) trashImg_(f); });
+    delWhere_('Files', function (f) { return f.kind === 'sub' && f.itemId === p.itemId; });
+    delWhere_('Items', function (x) { return x.itemId === p.itemId; });
+    log_('ครู', 'ลบช่องคะแนน', p.itemId, it.label + ' /' + it.max + ' (' + n + ' คะแนน)', '');
+    return true;
+  },
+  tScoreGrid: function (p) {
+    var g = find_('Groups', 'groupId', p.groupId, 'ไม่พบกลุ่มเรียน'), rooms = roomsOf_(g), cfg = cfg_();
+    var ids = {};
+    rows_('Items').forEach(function (i) { if (i.subjectId === g.subjectId) ids[i.itemId] = 1; });
+    var sess = rows_('Sessions').filter(function (x) { return x.groupId === g.groupId; }), sid = {}, by = {};
+    sess.forEach(function (x) { sid[x.sessionId] = 1; });
+    rows_('Attendance').forEach(function (a) {
+      if (!sid[a.sessionId]) return;
+      (by[a.studentId] = by[a.studentId] || {})[a.sessionId] = a;
+    });
+    var pct = {};
+    stus_().forEach(function (s) {
+      if (rooms.indexOf(s.room) >= 0) pct[s.studentId] = attSum_(sess, by[s.studentId] || {}, present_(cfg)).pct;
+    });
+    return { scores: rows_('Scores').filter(function (x) { return ids[x.itemId]; }), attPct: pct,
+      files: filesOf_(function (f) { return f.kind === 'sub' && ids[f.itemId]; }) };
+  },
+  tSetScores: function (p) {
+    var items = {}, map = {}, news = [];
+    rows_('Items').forEach(function (i) { items[i.itemId] = i; });
+    rows_('Scores').forEach(function (x) { map[x.itemId + '|' + x.studentId] = x; });
+    (p.list || []).forEach(function (e) {
+      var it = items[e.itemId];
+      if (!it) throw new Error('ไม่พบช่องคะแนน');
+      var o = {};
+      var cur = map[e.itemId + '|' + e.studentId];
+      if (e.sub !== undefined) {
+        if (['', 'รอ', 'ส่ง', 'ช้า'].indexOf(e.sub) < 0) throw new Error('สถานะส่งงานไม่ถูกต้อง');
+        o.sub = e.sub;
+        if (e.sub === 'ส่ง' && cur && cur.sub === 'รอ' && it.due && cur.subAt && cur.subAt > it.due) o.sub = 'ช้า';
+        if (e.sub === '') o.subAt = '';
+      }
+      if (e.score !== undefined) {
+        var v = String(e.score).trim();
+        if (v !== '' && (isNaN(+v) || +v < 0 || +v > +it.max)) throw new Error('คะแนน "' + v + '" ไม่อยู่ในช่วง 0–' + it.max + ' (' + it.label + ')');
+        o.score = v === '' ? '' : String(+v);
+      }
+      var x = map[e.itemId + '|' + e.studentId];
+      var oldv = x ? (x.sub + ':' + x.score) : '';
+      if (x) { upd_('Scores', x._r, o); x.sub = o.sub === undefined ? x.sub : o.sub; x.score = o.score === undefined ? x.score : o.score; }
+      else {
+        x = { itemId: e.itemId, studentId: e.studentId, sub: o.sub || '', score: o.score === undefined ? '' : o.score };
+        news.push(x); map[e.itemId + '|' + e.studentId] = x;
+      }
+      log_('ครู', 'คะแนน', it.label + '|' + e.studentId, oldv, x.sub + ':' + x.score,
+        { a: 'tSetScores', p: { list: [{ itemId: e.itemId, studentId: e.studentId, sub: oldv ? oldv.split(':')[0] : '', score: oldv ? oldv.split(':').slice(1).join(':') : '' }] } });
+    });
+    addMany_('Scores', news.filter(function (x) { return !x._r; }));
+    return true;
+  },
+  tTTSave: function (p) {
+    var day = String(+p.day), per = String(+p.period);
+    var r = rows_('Timetable').filter(function (x) { return x.day === day && x.period === per; })[0];
+    if (!p.groupId) { if (r) delWhere_('Timetable', function (x) { return x.day === day && x.period === per; }); return true; }
+    find_('Groups', 'groupId', p.groupId, 'ไม่พบกลุ่มเรียน');
+    var o = { day: day, period: per, groupId: p.groupId, span: +p.span === 2 ? 2 : 1 };
+    if (r) upd_('Timetable', r._r, o); else add_('Timetable', o);
+    return true;
+  },
+  tSubjectSave: function (p) {
+    var sb = find_('Subjects', 'subjectId', p.subjectId, 'ไม่พบวิชา');
+    var o = { code: String(p.code || ''), name: String(p.name || ''), wPre: +p.wPre || 0, wMid: +p.wMid || 0, wPost: +p.wPost || 0, wFinal: +p.wFinal || 0, wMode: p.wMode === 'eq' ? 'eq' : (p.wMode === undefined ? (sb.wMode || '') : '') };
+    upd_('Subjects', sb._r, o);
+    log_('ครู', 'แก้วิชา/สัดส่วน', p.subjectId, sb.code + ' ' + sb.name + ' ' + [sb.wPre, sb.wMid, sb.wPost, sb.wFinal].join(':'), o.code + ' ' + o.name + ' ' + [o.wPre, o.wMid, o.wPost, o.wFinal].join(':'),
+      { a: 'tSubjectSave', p: { subjectId: sb.subjectId, code: sb.code, name: sb.name, wPre: sb.wPre, wMid: sb.wMid, wPost: sb.wPost, wFinal: sb.wFinal, wMode: sb.wMode || '' } });
+    return find_('Subjects', 'subjectId', p.subjectId);
+  },
+  tSubjectAdd: function (p) {
+    if (!String(p.name || '').trim()) throw new Error('กรุณาใส่ชื่อวิชา');
+    var sb = { subjectId: id_('S'), code: String(p.code || '').trim(), name: String(p.name).trim(),
+      wPre: p.wPre === undefined ? 25 : +p.wPre || 0, wMid: p.wMid === undefined ? 20 : +p.wMid || 0,
+      wPost: p.wPost === undefined ? 25 : +p.wPost || 0, wFinal: p.wFinal === undefined ? 30 : +p.wFinal || 0 };
+    var groups = parseGroups_(p.rooms, sb.subjectId);
+    add_('Subjects', sb);
+    addMany_('Groups', groups);
+    addMany_('Items', [
+      { itemId: id_('I') + 'm', subjectId: sb.subjectId, cat: 'mid', label: 'สอบกลางภาค', max: sb.wMid || 20, ord: 1 },
+      { itemId: id_('I') + 'f', subjectId: sb.subjectId, cat: 'final', label: 'สอบปลายภาค', max: sb.wFinal || 30, ord: 1 }
+    ]);
+    log_('ครู', 'เพิ่มวิชา', sb.subjectId, '', sb.code + ' ' + sb.name + ' (' + groups.map(function (g) { return g.label; }).join(', ') + ')');
+    return true;
+  },
+  tSubjectDel: function (p) {
+    passCheck_(p);
+    var sb = find_('Subjects', 'subjectId', p.subjectId, 'ไม่พบวิชา');
+    rows_('Groups').forEach(function (g) { if (g.subjectId === sb.subjectId) purgeGroup_(g.groupId); });
+    var ids = {};
+    rows_('Items').forEach(function (i) { if (i.subjectId === sb.subjectId) ids[i.itemId] = 1; });
+    var n = delWhere_('Scores', function (x) { return ids[x.itemId]; });
+    rows_('Files').forEach(function (f) { if (f.kind === 'sub' && ids[f.itemId]) trashImg_(f); });
+    delWhere_('Files', function (f) { return f.kind === 'sub' && ids[f.itemId]; });
+    var qids = {};
+    rows_('Quizzes').forEach(function (q) { if (q.subjectId === sb.subjectId) qids[q.quizId] = 1; });
+    delWhere_('QuizAns', function (r) { return qids[r.quizId]; });
+    delWhere_('Quizzes', function (q) { return qids[q.quizId]; });
+    delWhere_('Items', function (x) { return x.subjectId === sb.subjectId; });
+    delWhere_('Subjects', function (x) { return x.subjectId === sb.subjectId; });
+    log_('ครู', 'ลบวิชา', sb.subjectId, sb.code + ' ' + sb.name + ' (' + n + ' คะแนน)', '');
+    return true;
+  },
+  tGroupAdd: function (p) {
+    find_('Subjects', 'subjectId', p.subjectId, 'ไม่พบวิชา');
+    var groups = parseGroups_(p.rooms, p.subjectId);
+    if (!groups.length) throw new Error('กรุณาใส่ห้อง เช่น 5/1 หรือ 4/4+4/5');
+    addMany_('Groups', groups);
+    log_('ครู', 'เพิ่มกลุ่มเรียน', p.subjectId, '', groups.map(function (g) { return g.label; }).join(', '));
+    return true;
+  },
+  tGroupDel: function (p) {
+    passCheck_(p);
+    var g = find_('Groups', 'groupId', p.groupId, 'ไม่พบกลุ่มเรียน');
+    var n = purgeGroup_(g.groupId);
+    log_('ครู', 'ลบกลุ่มเรียน', g.groupId, g.label + ' (' + n + ' คาบ)', '');
+    return true;
+  },
+  tDash: function () {
+    var cfg = cfg_(), today = d_(), items = rows_('Items'), groups = rows_('Groups'), studs = stus_(), subs = {}, sc = {}, qi = {};
+    closeExpired_(cfg);
+    rows_('Subjects').forEach(function (x) { subs[x.subjectId] = x; });
+    rows_('Scores').forEach(function (x) { sc[x.itemId + '|' + x.studentId] = x; });
+    rows_('Quizzes').forEach(function (q) { qi[q.itemId] = 1; });
+    var tasks = [], owe = {}, k = { overdue: 0, wait: 0, grade: 0, quizText: 0 };
+    var resetN = stus_().filter(function (x) { return x.resetReq; }).length;
+    groups.forEach(function (g) {
+      var rooms = roomsOf_(g), ss = studs.filter(function (s) { return rooms.indexOf(s.room) >= 0; });
+      items.forEach(function (it) {
+        if (it.subjectId !== g.subjectId || (it.cat !== 'pre' && it.cat !== 'post')) return;
+        var t = { groupId: g.groupId, label: g.label, itemId: it.itemId, name: it.label, due: it.due || '', quiz: !!qi[it.itemId], n: ss.length, s: 0, l: 0, w: 0, m: 0, o: 0, z: 0, ug: 0 };
+        ss.forEach(function (s) {
+          var x = sc[it.itemId + '|' + s.studentId], st = taskStat_(it, x, today);
+          t[st]++;
+          if ((st === 's' || st === 'l') && (!x || x.score === '')) t.ug++;
+          if (st === 'm') (owe[s.studentId] = owe[s.studentId] || { studentId: s.studentId, name: s.name, room: s.room, no: s.no, items: [] }).items.push(it.label);
+        });
+        k.overdue += t.m; k.wait += t.w; k.grade += t.ug;
+        if (t.m || t.w || t.ug) tasks.push(t);
+      });
+    });
+    rows_('QuizAns').forEach(function (r) {
+      if (!r.end || !r.detail) return;
+      JSON.parse(r.detail).forEach(function (d) { if (d.ok === null && (d.got === null || d.got === undefined)) k.quizText++; });
+    });
+    tasks.sort(function (a, b) { return b.m - a.m || b.w - a.w || b.ug - a.ug; });
+    // เวลาเรียนต่ำกว่าเกณฑ์
+    var sess = rows_('Sessions'), att = {}, low = [], pres = present_(cfg);
+    rows_('Attendance').forEach(function (a) { (att[a.studentId] = att[a.studentId] || {})[a.sessionId] = a; });
+    groups.forEach(function (g) {
+      var gs = sess.filter(function (x) { return x.groupId === g.groupId; }), rooms = roomsOf_(g);
+      if (!gs.length) return;
+      studs.forEach(function (s) {
+        if (rooms.indexOf(s.room) < 0) return;
+        var a = attSum_(gs, att[s.studentId] || {}, pres);
+        if (a.pct !== null && a.pct < (+cfg.msPct || 80)) low.push({ studentId: s.studentId, name: s.name, room: s.room, label: g.label, pct: a.pct });
+      });
+    });
+    low.sort(function (a, b) { return a.pct - b.pct; });
+    // คาบที่เปิดอยู่
+    var live = sess.filter(function (x) { return x.state === 'open'; }).map(function (se) {
+      var g = groups.filter(function (x) { return x.groupId === se.groupId; })[0];
+      if (!g) return null;
+      var rooms = roomsOf_(g), total = studs.filter(function (s) { return rooms.indexOf(s.room) >= 0; }).length, c = { 'มา': 0, 'สาย': 0, 'ลา': 0, 'ขาด': 0, 'กิจกรรม': 0 }, n = 0;
+      Object.keys(att).forEach(function (sid) { var a = att[sid][se.sessionId]; if (a && a.s1 && c[a.s1] !== undefined) { c[a.s1]++; n++; } });
+      return { sessionId: se.sessionId, groupId: se.groupId, label: g.label, subject: (subs[g.subjectId] || {}).name || '', period: se.period, span: se.span, openedAt: se.openedAt, checked: n, total: total, c: c,
+        quizOpen: se.quizOpen === '1', quizDone: rows_('QuizAns').filter(function (r) { return r.sessionId === se.sessionId && r.end; }).length };
+    }).filter(Boolean);
+    var oweList = Object.keys(owe).map(function (id) { return owe[id]; }).sort(function (a, b) { return b.items.length - a.items.length; });
+    return { today: today, resetN: resetN, msPct: +cfg.msPct || 80, k: { overdue: k.overdue, oweN: oweList.length, wait: k.wait, grade: k.grade + k.quizText, quizText: k.quizText },
+      tasks: tasks.slice(0, 8), owe: oweList.slice(0, 10), low: low.slice(0, 10), lowN: low.length, live: live };
+  },
+  tImg: function (p) { return readImg_(find_('Files', 'fileId', p.fileId, 'ไม่พบรูป')); },
+  tUpload: function (p) {
+    var sv = saveImg_(p.data, 'quiz_' + Date.now() + '.jpg');
+    var f = { fileId: id_('F'), kind: 'q', itemId: '', studentId: '', driveId: sv.driveId, mime: sv.mime, time: d_() + ' ' + t_() };
+    add_('Files', f);
+    return { fileId: f.fileId };
+  },
+  tQuizList: function () {
+    var cnt = {};
+    rows_('QuizAns').forEach(function (r) { if (r.end) cnt[r.quizId] = (cnt[r.quizId] || 0) + 1; });
+    return rows_('Quizzes').map(function (q) { return { quizId: q.quizId, subjectId: q.subjectId, title: q.title, itemId: q.itemId, timeLimit: q.timeLimit, qs: qs_(q), updated: q.updated, done: cnt[q.quizId] || 0 }; });
+  },
+  tQuizSave: function (p) {
+    var z = p.quiz || {};
+    find_('Subjects', 'subjectId', z.subjectId, 'เลือกวิชาก่อน');
+    if (!String(z.title || '').trim()) throw new Error('ตั้งชื่อควิซก่อน');
+    var qs = (z.qs || []).map(function (q, i) {
+      var n = 'ข้อ ' + (i + 1) + ': ', o = { id: String(q.id || id_('Q')), type: q.type, q: String(q.q || '').trim(), pts: +q.pts > 0 ? +q.pts : 1, img: String(q.img || '') };
+      if (QTYPES.indexOf(o.type) < 0) throw new Error(n + 'ชนิดคำถามไม่ถูกต้อง');
+      if (!o.q && !o.img) throw new Error(n + 'ยังไม่มีคำถาม');
+      if (o.type === 'mc') {
+        o.choices = (q.choices || []).map(function (c) { return String(c).trim(); });
+        if (o.choices.length < 2 || o.choices.some(function (c) { return !c; })) throw new Error(n + 'ต้องมีตัวเลือกอย่างน้อย 2 ข้อ และห้ามเว้นว่าง');
+        if (!(+q.ans >= 0 && +q.ans < o.choices.length) || q.ans === '' || q.ans === null || q.ans === undefined) throw new Error(n + 'ยังไม่ได้เลือกคำตอบที่ถูก');
+        o.ans = +q.ans;
+      } else if (o.type === 'tf') {
+        if (q.ans !== 'T' && q.ans !== 'F') throw new Error(n + 'ยังไม่ได้เลือก ถูก/ผิด');
+        o.ans = q.ans;
+      } else if (o.type === 'num') {
+        if (isNaN(parseNum_(q.ans))) throw new Error(n + 'คำตอบต้องเป็นตัวเลข');
+        o.ans = parseNum_(q.ans); o.tol = q.tol === '' || q.tol === undefined ? 1 : Math.max(0, +q.tol || 0); o.unit = String(q.unit || '');
+      } else if (o.type === 'short') {
+        o.ans = (Array.isArray(q.ans) ? q.ans : String(q.ans || '').split('|')).map(function (x) { return String(x).trim(); }).filter(String);
+        if (!o.ans.length) throw new Error(n + 'ใส่คำตอบที่ยอมรับอย่างน้อย 1 คำ');
+      }
+      return o;
+    });
+    if (!qs.length) throw new Error('เพิ่มคำถามอย่างน้อย 1 ข้อ');
+    var total = qs.reduce(function (a, q) { return a + q.pts; }, 0), json = JSON.stringify(qs);
+    if (json.length > 45000) throw new Error('ควิซยาวเกินไป แบ่งเป็นหลายชุด');
+    var cat = z.cat === 'post' ? 'post' : 'pre', old = z.quizId ? find_('Quizzes', 'quizId', z.quizId, 'ไม่พบควิซ') : null;
+    var row = { quizId: old ? old.quizId : id_('Z'), subjectId: z.subjectId, title: String(z.title).trim(), itemId: old ? old.itemId : '',
+      timeLimit: Math.max(0, Math.round(+z.timeLimit || 0)), qs: json, updated: d_() + ' ' + t_() };
+    var it = row.itemId ? rows_('Items').filter(function (i) { return i.itemId === row.itemId; })[0] : null;
+    if (it) upd_('Items', it._r, { max: total, label: 'ควิซ: ' + row.title, cat: cat });
+    else {
+      row.itemId = id_('I');
+      add_('Items', { itemId: row.itemId, subjectId: z.subjectId, cat: cat, label: 'ควิซ: ' + row.title, max: total, ord: Date.now(), hide: '0' });
+    }
+    if (old) upd_('Quizzes', old._r, row); else add_('Quizzes', row);
+    log_('ครู', old ? 'แก้ควิซ' : 'สร้างควิซ', row.title, '', qs.length + ' ข้อ / ' + total + ' คะแนน');
+    return { quizId: row.quizId, itemId: row.itemId };
+  },
+  tQuizDel: function (p) {
+    var qz = find_('Quizzes', 'quizId', p.quizId, 'ไม่พบควิซ');
+    var n = delWhere_('QuizAns', function (r) { return r.quizId === qz.quizId; });
+    delWhere_('Quizzes', function (r) { return r.quizId === qz.quizId; });
+    rows_('Sessions').forEach(function (se) { if (se.quizId === qz.quizId && se.quizOpen === '1') upd_('Sessions', se._r, { quizOpen: '0' }); });
+    log_('ครู', 'ลบควิซ', qz.title, n + ' คำตอบ (คะแนนในช่องยังอยู่)', '');
+    return true;
+  },
+  tQuizResults: function (p) {
+    var qz = find_('Quizzes', 'quizId', p.quizId, 'ไม่พบควิซ');
+    return { qs: qs_(qz), rows: rows_('QuizAns').filter(function (r) { return r.quizId === qz.quizId; }).map(function (r) {
+      return { studentId: r.studentId, sessionId: r.sessionId, start: r.start, end: r.end, score: r.score, leaves: +r.leaves || 0, ans: r.ans ? JSON.parse(r.ans) : {}, detail: r.detail ? JSON.parse(r.detail) : [] };
+    }) };
+  },
+  tQuizGrade: function (p) {
+    var qz = find_('Quizzes', 'quizId', p.quizId, 'ไม่พบควิซ');
+    var row = rows_('QuizAns').filter(function (r) { return r.quizId === qz.quizId && r.studentId === p.studentId && r.end; })[0];
+    if (!row) throw new Error('นักเรียนยังไม่ได้ส่งควิซ');
+    var d = JSON.parse(row.detail || '[]'), x = d.filter(function (z) { return z.id === p.qid; })[0];
+    if (!x) throw new Error('ไม่พบข้อนี้');
+    var v = String(p.pts).trim();
+    if (v !== '' && (isNaN(+v) || +v < 0 || +v > x.pts)) throw new Error('คะแนนต้องอยู่ระหว่าง 0–' + x.pts);
+    var old = x.got;
+    x.got = v === '' ? null : +v;
+    var score = Math.round(d.reduce(function (s, z) { return s + (+z.got || 0); }, 0) * 100) / 100;
+    upd_('QuizAns', row._r, { detail: JSON.stringify(d), score: score });
+    quizScore_(qz, p.studentId, score);
+    log_('ครู', 'ตรวจคำตอบควิซ', qz.title + '|' + p.studentId + '|' + p.qid, old === null || old === undefined ? '' : old, v);
+    return score;
+  },
+  tQuizRegrade: function (p) {
+    var qz = find_('Quizzes', 'quizId', p.quizId, 'ไม่พบควิซ'), n = 0;
+    rows_('QuizAns').forEach(function (r) {
+      if (!r.end) return;
+      var g = grade_q_(qz, JSON.parse(r.ans || '{}'), JSON.parse(r.detail || '[]'));
+      upd_('QuizAns', r._r, { detail: JSON.stringify(g.detail), score: g.score });
+      quizScore_(qz, r.studentId, g.score); n++;
+    });
+    log_('ครู', 'ตรวจควิซใหม่', qz.title, '', n + ' คน');
+    return n;
+  },
+  tQuizReset: function (p) {
+    var qz = find_('Quizzes', 'quizId', p.quizId, 'ไม่พบควิซ');
+    delWhere_('QuizAns', function (r) { return r.quizId === qz.quizId && r.studentId === p.studentId; });
+    var sc = rows_('Scores').filter(function (x) { return x.itemId === qz.itemId && x.studentId === p.studentId; })[0];
+    if (sc) upd_('Scores', sc._r, { sub: '', score: '' });
+    log_('ครู', 'ให้ทำควิซใหม่', qz.title + '|' + p.studentId, '', '');
+    return true;
+  },
+  tStuSave: function (p) {
+    var id = String(p.studentId || '').trim();
+    var cur = allStus_().filter(function (x) { return x.studentId === id; })[0];
+    if (p.isNew) {
+      if (!/^[A-Za-z0-9]{3,15}$/.test(id)) throw new Error('เลขประจำตัวต้องเป็นตัวเลขหรือตัวอักษร 3–15 ตัว');
+      if (cur) throw new Error('เลขประจำตัวนี้มีในระบบแล้ว');
+    } else if (!cur) throw new Error('ไม่พบนักเรียน');
+    var v = checkStu_(p, id), active = p.active === false || p.active === '0' ? '0' : '1';
+    if (p.isNew) add_('Students', { studentId: id, room: v.room, no: v.no, name: v.name, pin: '', device: '', fail: 0, active: active, nick: v.nick, self: '' });
+    else upd_('Students', cur._r, { room: v.room, no: v.no, name: v.name, nick: v.nick, active: active });
+    log_('ครู', p.isNew ? 'เพิ่มนักเรียน' : 'แก้ข้อมูลนักเรียน', id, cur ? [cur.name, cur.nick, cur.room, cur.no, cur.active].join(' | ') : '', [v.name, v.nick, v.room, v.no, active].join(' | '),
+      cur ? { a: 'tStuSave', p: { studentId: id, name: cur.name, nick: cur.nick, room: cur.room, no: cur.no, active: cur.active !== '0' } } : null);
+    return true;
+  },
+  tStudent: function (p) {
+    var s = allStus_().filter(function (x) { return x.studentId === String(p.studentId || '').trim(); })[0];
+    if (!s) throw new Error('ไม่พบนักเรียน');
+    var cfg = cfg_(), today = d_(), subs = {}, items = rows_('Items'), sess = rows_('Sessions'), sm = {}, am = {}, fm = {}, qi = {};
+    rows_('Subjects').forEach(function (x) { subs[x.subjectId] = x; });
+    rows_('Scores').forEach(function (x) { if (x.studentId === s.studentId) sm[x.itemId] = x; });
+    rows_('Attendance').forEach(function (a) { if (a.studentId === s.studentId) am[a.sessionId] = a; });
+    filesOf_(function (f) { return f.kind === 'sub' && f.studentId === s.studentId; }).forEach(function (f) { (fm[f.itemId] = fm[f.itemId] || []).push(f.fileId); });
+    var quizzes = rows_('Quizzes'), trRows = rows_('Traits').filter(function (r) { return r.studentId === s.studentId; });
+    quizzes.forEach(function (q) { qi[q.itemId] = q; });
+    var qa = rows_('QuizAns').filter(function (r) { return r.studentId === s.studentId && r.end; });
+    var groups = rows_('Groups').filter(function (g) { return roomsOf_(g).indexOf(s.room) >= 0; });
+    return {
+      me: { studentId: s.studentId, name: s.name, nick: s.nick || '', room: s.room, no: s.no, self: s.self === '1', active: s.active !== '0', hasDev: !!s.device },
+      today: today,
+      subjects: groups.map(function (g) {
+        var sb = subs[g.subjectId] || {}, its = sortItems_(items.filter(function (i) { return i.subjectId === g.subjectId; }));
+        var net = calcNet_(sb, its, sm), gs = sess.filter(function (x) { return x.groupId === g.groupId; })
+          .sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : (+b.period - +a.period); });
+        return {
+          groupId: g.groupId, label: g.label, code: sb.code, name: sb.name, net: net, grade: grade_(net.total, cuts_(cfg)),
+          att: attSum_(gs, am, present_(cfg)), traits: traitsOf_(g.subjectId, s.studentId, cfg, trRows), traitLists: { char: traitList_(cfg, 'char'), rtw: traitList_(cfg, 'rtw') },
+          recent: gs.slice(0, 12).map(function (se) { var a = am[se.sessionId] || {}; return { sessionId: se.sessionId, date: se.date, period: se.period, span: se.span, s1: a.s1 || (se.state === 'closed' ? 'ขาด' : ''), s2: a.s2 || '', open: se.state === 'open' }; }),
+          items: its.map(function (i) {
+            var x = sm[i.itemId] || {};
+            return { itemId: i.itemId, cat: i.cat, label: i.label, max: i.max, due: i.due || '', hide: i.hide === '1', quiz: !!qi[i.itemId],
+              sub: x.sub || '', subAt: x.subAt || '', score: x.score === undefined ? '' : x.score, files: fm[i.itemId] || [], st: (i.cat === 'pre' || i.cat === 'post') ? taskStat_(i, sm[i.itemId], today) : '' };
+          }),
+          quiz: qa.map(function (r) { var q = quizzes.filter(function (z) { return z.quizId === r.quizId; })[0]; return q && q.subjectId === g.subjectId ? { title: q.title, score: r.score, max: qs_(q).reduce(function (a, z) { return a + (+z.pts || 1); }, 0) } : null; }).filter(Boolean)
+        };
+      })
+    };
+  },
+  tItemOrder: function (p) {
+    var ids = (p.ids || []).map(String), its = rows_('Items'), n = 0;
+    ids.forEach(function (id, k) {
+      var it = its.filter(function (i) { return i.itemId === id; })[0];
+      if (it && String(it.ord) !== String(k + 1)) { upd_('Items', it._r, { ord: k + 1 }); n++; }
+    });
+    log_('ครู', 'จัดลำดับงาน', ids.length + ' ช่อง', '', n + ' ช่องเปลี่ยนลำดับ');
+    return n;
+  },
+  // ข้อมูลทั้งหมดสำหรับเครื่องครู (ซ่อนรหัสผ่าน/PIN/โทเคนเครื่อง)
+  tSnapshot: function () {
+    var out = { ver: APP_VER, gen: PropertiesService.getScriptProperties().getProperty('gen') || '1', now: Date.now(), data: {} };
+    SYNC.forEach(function (n) { out.data[n] = rows_(n).map(function (o) { return syncRow_(n, o); }); });
+    return out;
+  },
+  // เฉพาะแถวที่เปลี่ยนหลัง since (ms) + แถวที่ถูกลบ · only = รายชื่อชีต (เช่น ตอนอยู่หน้าคาบสด)
+  tSync: function (p) {
+    var since = +p.since || 0, only = Array.isArray(p.only) ? p.only.filter(function (n) { return KEYS[n]; }) : SYNC;
+    var out = { ver: APP_VER, gen: PropertiesService.getScriptProperties().getProperty('gen') || '1', now: Date.now(), data: {}, del: [] };
+    only.forEach(function (n) {
+      var r = rows_(n).filter(function (o) { return +o.u > since; });
+      if (r.length) out.data[n] = r.map(function (o) { return syncRow_(n, o); });
+    });
+    out.del = rows_('Del').filter(function (d) { return +d.u > since && only.indexOf(d.sheet) >= 0; }).map(function (d) { return [d.sheet, d.key]; });
+    return out;
+  },
+  tStumisInfo: function () {
+    var c = stuProps_();
+    return { user: c.user, ready: !!(c.user && c.pass), url: c.base };
+  },
+  tStumisCred: function (p) {
+    var pr = PropertiesService.getScriptProperties(), u = String(p.user || '').trim(), pw = String(p.pass || '');
+    if (!u) throw new Error('กรอกชื่อผู้ใช้ STUMIS');
+    pr.setProperty('stumisUser', u);
+    if (pw) pr.setProperty('stumisPass', pw);
+    if (p.url) pr.setProperty('stumisUrl', String(p.url).trim());
+    log_('ครู', 'ตั้งค่าบัญชี STUMIS', u, '', pw ? 'เปลี่ยนรหัส' : '');
+    return API.tStumisInfo();
+  },
+  // นำเข้าเวลาเรียนเดิมจาก STUMIS (ภาคเรียนปัจจุบัน) → สร้างคาบที่ปิดแล้วในระบบเรา · คาบที่มีอยู่แล้วจะข้าม
+  tStumisImport: function (p) {
+    var g = find_('Groups', 'groupId', p.groupId, 'ไม่พบกลุ่มเรียน'), S = new Stu_().login(), plan = stuImportPlan_(S, g);
+    if (p.dry) return stuPlanOut_(plan, g);
+    var out0 = stuPlanOut_(plan, g);
+    var att = [], ses = [];
+    var lock = LockService.getScriptLock(); lock.waitLock(25000);
+    try {
+      var ex = rows_('Sessions').filter(function (x) { return x.groupId === g.groupId; });
+      plan.sessions.forEach(function (n) {
+        if (stuOverlap_(ex, n)) return;
+        var se = { sessionId: id_('S'), groupId: g.groupId, date: n.date, period: n.period, span: n.span, openedAt: Date.now(), closedAt: Date.now(),
+          state: 'closed', exitQ: '', exitOpen: '0', exitItemId: '', note: 'นำเข้าจาก STUMIS', quizId: '', quizOpen: '', stumis: '' };
+        var my = [];
+        Object.keys(n.st).forEach(function (sid) {
+          var v = n.st[sid], s1 = v[0] || 'ขาด', s2 = n.span === 2 ? (v[1] || s1) : '';
+          my.push({ sessionId: se.sessionId, studentId: sid, s1: s1, s2: s2 && s2 !== s1 ? s2 : '', time: '', src: 'stumis', dev: '' });
+        });
+        se.stumis = JSON.stringify({ at: nowStr_(), h: stuHash_(se, my), imp: 1 });
+        ses.push(se); att = att.concat(my); ex.push(se);
+      });
+      if (ses.length) { addMany_('Sessions', ses); if (att.length) addMany_('Attendance', att); }
+      log_('ครู', 'นำเข้าเวลาเรียนจาก STUMIS', g.groupId, '', g.label + ' ' + ses.length + ' คาบ');
+    } finally { lock.releaseLock(); }
+    out0.created = ses.length; return out0;
+  },
+  tStumisTest: function () {
+    var S = new Stu_().login();
+    return { cells: S.cells.map(function (c) { return { wan: c.wan, cab: c.cab, text: c.text, rooms: c.rooms }; }), calls: S.n };
+  },
+  // ส่งเช็คชื่อ 1 คาบเข้า STUMIS (dry = ดูก่อนว่าจะเปลี่ยนอะไร ไม่เขียนจริง)
+  tStumisPush: function (p) {
+    var se = find_('Sessions', 'sessionId', p.sessionId, 'ไม่พบคาบ');
+    return stuPushSession_(se, !!p.dry, new Stu_().login(), 'ครู');
+  },
+  tTraitGrid: function (p) {
+    var g = find_('Groups', 'groupId', p.groupId, 'ไม่พบกลุ่มเรียน'), rooms = roomsOf_(g), cfg = cfg_(), ids = {};
+    stus_().forEach(function (s) { if (rooms.indexOf(s.room) >= 0) ids[s.studentId] = 1; });
+    return { lists: { char: traitList_(cfg, 'char'), rtw: traitList_(cfg, 'rtw') },
+      rows: rows_('Traits').filter(function (r) { return r.subjectId === g.subjectId && ids[r.studentId]; }).map(function (r) { return { studentId: r.studentId, kind: r.kind, idx: +r.idx, val: r.val }; }) };
+  },
+  tTraitSet: function (p) {
+    if (TRAIT_KINDS.indexOf(p.kind) < 0) throw new Error('ประเภทไม่ถูกต้อง');
+    find_('Subjects', 'subjectId', p.subjectId, 'ไม่พบวิชา');
+    var n = traitList_(cfg_(), p.kind).length, map = {}, news = [], old = [];
+    rows_('Traits').forEach(function (r) { if (r.subjectId === p.subjectId && r.kind === p.kind) map[r.studentId + '|' + r.idx] = r; });
+    (p.list || []).forEach(function (e) {
+      var v = String(e.val === null || e.val === undefined ? '' : e.val).trim(), idx = +e.idx;
+      if (v !== '' && ['0', '1', '2', '3'].indexOf(v) < 0) throw new Error('คะแนนต้องเป็น 0–3');
+      if (!(idx >= 0 && idx < n)) throw new Error('ตัวชี้วัดไม่ถูกต้อง');
+      var r = map[e.studentId + '|' + idx];
+      old.push({ studentId: e.studentId, idx: idx, val: r ? r.val : '' });
+      if (r) { if (r.val !== v) upd_('Traits', r._r, { val: v }); }
+      else if (v !== '') news.push({ subjectId: p.subjectId, studentId: e.studentId, kind: p.kind, idx: idx, val: v });
+    });
+    addMany_('Traits', news);
+    log_('ครู', p.kind === 'char' ? 'ประเมินคุณลักษณะ' : 'ประเมินอ่าน คิดวิเคราะห์ เขียน', p.subjectId, '', (p.list || []).length + ' ช่อง',
+      { a: 'tTraitSet', p: { subjectId: p.subjectId, kind: p.kind, list: old } });
+    return true;
+  },
+  tStuReset: function (p) {
+    var s = stu_(p.studentId);
+    if (p.what === 'deny') { upd_('Students', s._r, { resetReq: '' }); log_('ครู', 'ปฏิเสธคำขอรีเซ็ตรหัส', s.studentId + ' ' + s.name, '', ''); return true; }
+    if (p.what === 'pin') upd_('Students', s._r, { pin: '', fail: 0, device: '', resetReq: '' });
+    else upd_('Students', s._r, { device: '' });
+    log_('ครู', p.what === 'pin' ? 'รีเซ็ตรหัสนักเรียน' : 'รีเซ็ตเครื่องนักเรียน', s.studentId + ' ' + s.name, '', '');
+    return true;
+  },
+  tCfg: function (p) {
+    var allow = ['lateMin', 'periodMin', 'presentAs', 'gradeCut', 'periods', 'dayStart', 'breakAfter', 'breakMin', 'showGrade', 'teacherPass', 'term', 'msPct', 'rPct', 'charList', 'rtwList', 'stuAuto'];
+    if ((p.key === 'msPct' || p.key === 'rPct') && !(+p.value >= 0 && +p.value <= 100)) throw new Error('ต้องเป็น 0–100');
+    if (allow.indexOf(p.key) < 0) throw new Error('ตั้งค่านี้ไม่ได้');
+    if (p.key === 'teacherPass' && String(p.value).length < 6) throw new Error('รหัสผ่านต้องยาวอย่างน้อย 6 ตัว');
+    var r = rows_('Config').filter(function (x) { return x.key === p.key; })[0];
+    if (r) upd_('Config', r._r, { value: p.value }); else add_('Config', { key: p.key, value: p.value, note: '' });
+    log_('ครู', 'ตั้งค่า', p.key, p.key === 'teacherPass' ? '***' : (r ? r.value : ''), p.key === 'teacherPass' ? '***' : p.value);
+    return { t: tTok_() };
+  },
+  tLog: function () {
+    return rows_('Log').slice(-300).reverse().map(function (r) {
+      return { id: r.id, time: r.time, who: r.who, what: r.what, key: r.key, old: r.old, 'new': r['new'], canUndo: !!r.undo && r.undo !== 'done', undone: r.undo === 'done' };
+    });
+  },
+  tUndo: function (p) {
+    var r = rows_('Log').filter(function (x) { return x.id && x.id === p.id; })[0];
+    if (!r || !r.undo || r.undo === 'done') throw new Error('รายการนี้เรียกคืนไม่ได้');
+    var u = JSON.parse(r.undo);
+    if (UNDOABLE.indexOf(u.a) < 0) throw new Error('รายการนี้เรียกคืนไม่ได้');
+    API[u.a](u.p || {});
+    upd_('Log', r._r, { undo: 'done' });
+    return true;
+  }
+};
+
+var READ_ONLY = { tSnapshot: 1, tSync: 1, tStumisImport: 1, tStumisPush: 1, tStumisTest: 1, tStumisInfo: 1, sLookup: 1, tTraitGrid: 1, tStudent: 1, sScores: 1, sImg: 1, tImg: 1, tLogin: 1, tLive: 1, tAttGrid: 1, tScoreGrid: 1, tLog: 1, tQuizList: 1, tQuizResults: 1 };
+// tBoot เขียนได้ (ปิดคาบที่หมดเวลา) จึงต้องล็อก
+function route_(a, p) {
+  if (!API[a]) throw new Error('ไม่รู้จักคำสั่ง ' + a);
+  if (a.charAt(0) === 't' && a !== 'tLogin') authT_(p);
+  if (READ_ONLY[a]) return API[a](p);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try { return API[a](p); } finally { lock.releaseLock(); }
+}
+function doPost(e) {
+  var out;
+  MEMO_ = {}; ID_SEED = null; ID_N = 0; NOW_ = 0;
+  try {
+    var req = JSON.parse(e.postData.contents);
+    if (req.s && /^[a-z0-9]{6,16}$/.test(req.s)) ID_SEED = req.s;
+    // ส่งซ้ำ (เน็ตหลุดหลังบันทึกไปแล้ว) → ตอบผลเดิม ไม่ทำซ้ำ
+    var oc = ID_SEED ? cache_() : null, prev = null;
+    try { prev = oc ? oc.get('op:' + ID_SEED) : null; } catch (x) {}
+    if (prev) { out = JSON.parse(prev); }
+    else {
+      out = { ok: true, data: route_(req.a, req.p || {}) };
+      if (oc) { try { var js0 = JSON.stringify(out, function (k, v) { return k === '_r' ? undefined : v; }); if (js0.length < 90000) oc.put('op:' + ID_SEED, js0, 21600); } catch (x) {} }
+    }
+  } catch (err) {
+    out = { ok: false, error: String(err && err.message || err) };
+  }
+  MEMO_ = null; ID_SEED = null;
+  return ContentService.createTextOutput(JSON.stringify(out, function (k, v) { return k === '_r' ? undefined : v; }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+function doGet() { return ContentService.createTextOutput('gradebook api ok'); }
+
+function DEFAULTS_() {
+  return [
+      { key: 'teacherPass', value: '', note: '' },
+      { key: 'lateMin', value: 10, note: 'แตะหลังเปิดคาบเกินกี่นาที = สาย' },
+      { key: 'periodMin', value: 50, note: 'ความยาว 1 คาบ (นาที) — เลยเวลาแล้วระบบปิดคาบเอง' },
+      { key: 'presentAs', value: 'มา,สาย,กิจกรรม', note: 'สถานะที่นับเป็นมาเรียน (คิด 80%)' },
+      { key: 'gradeCut', value: '80,75,70,65,60,55,50', note: 'เกณฑ์เกรด 4, 3.5, 3, 2.5, 2, 1.5, 1' },
+      { key: 'periods', value: 9, note: 'จำนวนคาบต่อวันในตารางสอน' },
+      { key: 'showGrade', value: 1, note: '1 = นักเรียนเห็นเกรดคาดการณ์, 0 = ไม่แสดง' },
+      { key: 'term', value: '', note: 'ภาคเรียน/ปีการศึกษา' },
+      { key: 'dayStart', value: '08:30', note: 'เวลาเริ่มคาบแรก' },
+      { key: 'breakAfter', value: '', note: 'พักหลังคาบที่ (เว้นว่าง = ไม่มีพัก)' },
+      { key: 'breakMin', value: '', note: 'พักกี่นาที' },
+      { key: 'msPct', value: 80, note: 'เวลาเรียนต่ำกว่ากี่ % = มส.' },
+      { key: 'rPct', value: 80, note: 'ส่งงานที่ถึงกำหนดต่ำกว่ากี่ % = เสี่ยง ร.' }
+  ];
+}
+
+/* ---------- STUMIS (ระบบเช็คเวลาเรียนของโรงเรียน) ---------- */
+var STU_ST = { 'มา': 'มาเรียน', 'สาย': 'มาสาย', 'ขาด': 'ขาด', 'ลา': 'ลา', 'กิจกรรม': 'กิจกรรม', 'หนี': 'หนีเรียน' };
+var STU_SYM = { '/': 'มาเรียน', '(ข)': 'ขาด', '(ล)': 'ลา', '(ก)': 'กิจกรรม', '(ส)': 'มาสาย', '(ห)': 'หนีเรียน' };
+var TH_DAY = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+var TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function nowStr_() { return Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd HH:mm'); }
+function stuDay_(d) { var a = String(d).split('-'); return TH_DAY[new Date(Date.UTC(+a[0], +a[1] - 1, +a[2])).getUTCDay()]; }
+function stuDateKey_(d) { var a = String(d).split('-'); return (+a[2]) + TH_MON[+a[1] - 1] + (+a[0] + 543); }
+function syncRow_(n, o) {
+  return HEAD[n].map(function (k) {
+    var v = o[k] === undefined ? '' : o[k];
+    if (n === 'Students' && (k === 'pin' || k === 'device') && v) return '#';
+    if (n === 'Config' && o.key === 'teacherPass' && k === 'value') return '';
+    return v;
+  });
+}
+function stuProps_() {
+  var p = PropertiesService.getScriptProperties();
+  return { base: p.getProperty('stumisUrl') || 'https://pathumpit.stumis01.com/', user: p.getProperty('stumisUser') || '', pass: p.getProperty('stumisPass') || '' };
+}
+// แฮชธรรมดา (ไม่ใช้ secret) เพื่อให้เครื่องครูคำนวณได้ตรงกับเซิร์ฟเวอร์
+function plainHash_(s) {
+  var h1 = 5381, h2 = 52711;
+  for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); h1 = (h1 * 33 ^ c) >>> 0; h2 = (h2 * 31 + c) >>> 0; }
+  return h1.toString(36) + h2.toString(36) + s.length.toString(36);
+}
+function stuHash_(se, att) {
+  return plainHash_(att.filter(function (a) { return a.sessionId === se.sessionId; }).map(function (a) { return a.studentId + ':' + (a.s1 || '') + '/' + (+se.span === 2 ? (a.s2 || a.s1 || '') : ''); }).sort().join(',') + '|' + se.span + '|' + se.period + '|' + se.date);
+}
+function stuState_(se, att) {
+  if (!se.stumis) return null;
+  try {
+    var o = JSON.parse(se.stumis), h = stuHash_(se, att);
+    return { at: o.at || '', dirty: !o.h || o.h !== h, err: o.err && o.eh === h ? o.err : '' };
+  } catch (e) { return null; }
+}
+function htmlDec_(s) {
+  return String(s).replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0*39;/g, "'")
+    .replace(/&#(\d+);/g, function (m, n) { return String.fromCharCode(+n); }).replace(/&amp;/g, '&');
+}
+function htmlText_(s) { return htmlDec_(String(s).replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim(); }
+function attrs_(tag) {
+  var o = {}, re = /([\w:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g, m;
+  tag = String(tag).replace(/^<\s*\w+/, '').replace(/\/?\s*>$/, '');
+  while ((m = re.exec(tag))) o[m[1].toLowerCase()] = htmlDec_(m[2] != null ? m[2] : m[3] != null ? m[3] : m[4] != null ? m[4] : '');
+  return o;
+}
+function forms_(html) {
+  var out = [], re = /<form\b([^>]*)>([\s\S]*?)<\/form>/gi, m;
+  html = String(html).replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<!--[\s\S]*?-->/g, '');
+  while ((m = re.exec(html))) {
+    var f = attrs_('<form ' + m[1] + '>'), inner = m[2], ins = [], im, ire = /<input\b[^>]*>/gi;
+    while ((im = ire.exec(inner))) ins.push(attrs_(im[0]));
+    var sub = ins.filter(function (i) { return /^(submit|button)$/i.test(i.type || ''); }).map(function (i) { return i.value || ''; }).join(' ');
+    out.push({ action: f.action || '', inputs: ins, text: (htmlText_(inner) + ' ' + sub).trim() });
+  }
+  return out;
+}
+function fval_(f, name) { for (var i = 0; i < f.inputs.length; i++) if (f.inputs[i].name === name) return f.inputs[i].value || ''; return null; }
+// ค่าที่เบราว์เซอร์จะส่ง (ไม่รวม radio/checkbox) + ปุ่ม submit ตัวแรกที่มีชื่อ
+function fdata_(f) {
+  var o = {}, sub = false;
+  f.inputs.forEach(function (i) {
+    var t = (i.type || 'text').toLowerCase();
+    if (!i.name || t === 'radio' || t === 'checkbox' || t === 'image' || t === 'button' || t === 'reset') return;
+    if (t === 'submit') { if (!sub) { o[i.name] = i.value || ''; sub = true; } return; }
+    o[i.name] = i.value || '';
+  });
+  return o;
+}
+function stuRooms_(text) {
+  var m = /ม\.?\s*(\d)\s*\/\s*(\d+(?:\s*[-,]\s*\d+)*)/.exec(text);
+  if (!m) return [];
+  return m[2].split(/[-,]/).map(function (x) { return m[1] + '/' + x.trim(); });
+}
+function Stu_() {
+  var c = stuProps_();
+  if (!c.user || !c.pass) throw new Error('ยังไม่ได้ตั้งค่าบัญชี STUMIS (เพิ่มเติม › ตั้งค่า)');
+  this.c = c; this.jar = {}; this.n = 0;
+}
+Stu_.prototype.url = function (path, from) {
+  if (/^https?:/i.test(path)) return path;
+  var b = (from || this.c.base).match(/^(https?:\/\/[^\/]+)(\/[^?#]*)?/), origin = b[1], dir = (b[2] || '/').replace(/[^\/]*$/, '');
+  return path.charAt(0) === '/' ? origin + path : origin + dir + path;
+};
+Stu_.prototype.req = function (path, payload, depth, noFollow) {
+  var url = this.url(path), jar = this.jar, ck = Object.keys(jar).map(function (k) { return k + '=' + jar[k]; }).join('; ');
+  var opt = { method: payload ? 'post' : 'get', followRedirects: false, muteHttpExceptions: true, headers: ck ? { Cookie: ck } : {} };
+  if (payload) {
+    opt.contentType = 'application/x-www-form-urlencoded; charset=UTF-8';
+    opt.payload = Object.keys(payload).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]); }).join('&');
+  }
+  var r = UrlFetchApp.fetch(url, opt), h = r.getAllHeaders(), sc = h['Set-Cookie'] || h['set-cookie'], code = r.getResponseCode();
+  this.n++;
+  if (sc) (Array.isArray(sc) ? sc : [sc]).forEach(function (c) { var kv = String(c).split(';')[0], i = kv.indexOf('='); if (i > 0) jar[kv.slice(0, i).trim()] = kv.slice(i + 1).trim(); });
+  var loc = h.Location || h.location;
+  if (code >= 300 && code < 400 && noFollow) return '';
+  if (code >= 300 && code < 400 && loc && (depth || 0) < 5) return this.req(this.url(String(loc), url), null, (depth || 0) + 1);
+  if (code >= 400) throw new Error('STUMIS ตอบกลับผิดพลาด ' + code);
+  this.last = url;
+  return r.getContentText('UTF-8');
+};
+Stu_.prototype.login = function () {
+  this.req('index.php');
+  this.req('index.php', { user: this.c.user, pass: this.c.pass, keep_login: '1', button2: 'เข้าสู่ระบบ' });
+  var tt = this.req('vicha_table-ck1.php');
+  if (tt.indexOf('vicha_ck3.php') < 0) throw new Error('ล็อกอิน STUMIS ไม่สำเร็จ ตรวจชื่อผู้ใช้และรหัสผ่าน');
+  this.cells = forms_(tt).filter(function (f) { return /vicha_ck3\.php/.test(f.action); }).map(function (f) {
+    var d = fdata_(f);
+    return { f: d, text: f.text, wan: String(d.wan || '').trim(), cab: +d.cab, rooms: stuRooms_(f.text) };
+  });
+  return this;
+};
+// ส่ง 1 คาบ (ใช้ทั้งปุ่มส่งและส่งอัตโนมัติ)
+function stuPushSession_(se, dry, S, who) {
+  var g = find_('Groups', 'groupId', se.groupId, 'ไม่พบกลุ่มเรียน');
+  if (se.state !== 'closed') throw new Error('ปิดคาบก่อนจึงส่งเข้า STUMIS ได้');
+  if (!(+se.period > 0)) throw new Error('คาบนี้ไม่มีเลขคาบ ใส่เลขคาบก่อน');
+  var att = rows_('Attendance').filter(function (a) { return a.sessionId === se.sessionId; }), am = {};
+  att.forEach(function (a) { am[a.studentId] = a; });
+  var rooms = roomsOf_(g), studs = stus_().filter(function (s) { return rooms.indexOf(s.room) >= 0; });
+  var cells = stuCells_(S, se, g), parts = [];
+  if (!cells.length) throw new Error('ไม่พบคาบนี้ในตารางสอน STUMIS (วัน' + stuDay_(se.date) + ' คาบ ' + se.period + ' ห้อง ' + rooms.join(', ') + ')');
+  cells.forEach(function (ck) {
+    var mine = studs.filter(function (s) { return ck.cell.rooms.indexOf(s.room) >= 0; }), want = stuWant_(mine.map(function (s) {
+      var a = am[s.studentId] || {}, st = ck.k === 1 ? a.s1 : (a.s2 || a.s1);
+      return { id: s.studentId, name: s.name, st: STU_ST[st || 'ขาด'] || 'ขาด' };
+    }));
+    var part = stuPushCell_(S, se, ck, want, dry);
+    part.unmatched = mine.filter(function (s) { return !want.used[s.studentId]; }).map(function (s) { return s.name; });
+    parts.push(part);
+  });
+  var res = { dry: dry, parts: parts, calls: S.n };
+  if (!dry) {
+    stuMark_(se.sessionId, { at: nowStr_(), h: stuHash_(se, att) });
+    log_(who, 'ส่งเช็คชื่อเข้า STUMIS', se.sessionId, '', parts.map(function (x) { return x.label + ' คาบ ' + x.cab + ' ' + (x.mode === 'new' ? 'บันทึกใหม่ ' + x.total + ' คน' : 'แก้ ' + x.change.length + ' คน'); }).join(' · '));
+    res.sent = true;
+  }
+  return res;
+}
+function stuMark_(sessionId, o) {
+  var lock = LockService.getScriptLock(); lock.waitLock(25000);
+  try { var cur = find_('Sessions', 'sessionId', sessionId, 'ไม่พบคาบ'); upd_('Sessions', cur._r, { stumis: JSON.stringify(o) }); }
+  finally { lock.releaseLock(); }
+}
+// ส่งอัตโนมัติ: คาบที่ปิดแล้วและยังไม่ส่ง/แก้หลังส่ง (ชั่วโมงละครั้ง) · ถ้าส่งไม่ได้จะจำไว้ไม่ลองซ้ำจนกว่าจะมีการแก้คาบนั้น
+function stuAuto_(cfg, force) {
+  if (String(cfg.stuAuto) !== '1' && !force) return null;
+  var c = stuProps_(), pr = PropertiesService.getScriptProperties(), now = Date.now();
+  if (!c.user || !c.pass) return null;
+  if (!force && now - (+pr.getProperty('stuAutoLast') || 0) < 55 * 60000) return null;
+  pr.setProperty('stuAutoLast', String(now));
+  var att = rows_('Attendance'), todo = rows_('Sessions').filter(function (se) {
+    if (se.state !== 'closed' || !(+se.period > 0)) return false;
+    var o = null; try { o = se.stumis ? JSON.parse(se.stumis) : null; } catch (e) {}
+    var h = stuHash_(se, att);
+    if (o && o.err) return o.eh !== h;
+    return !o || o.h !== h;
+  });
+  if (!todo.length) return { n: 0, ok: 0 };
+  var S, ok = 0;
+  try { S = new Stu_().login(); } catch (e) { log_('ระบบ', 'ส่ง STUMIS อัตโนมัติไม่สำเร็จ', '', '', e.message); return { n: todo.length, ok: 0, err: e.message }; }
+  todo.forEach(function (se) {
+    try { stuPushSession_(se, false, S, 'ระบบ (อัตโนมัติ)'); ok++; }
+    catch (e) {
+      var o = {}; try { o = se.stumis ? JSON.parse(se.stumis) : {}; } catch (x) {}
+      o.err = e.message; o.eh = stuHash_(se, att); o.errAt = nowStr_();
+      stuMark_(se.sessionId, o);
+    }
+  });
+  return { n: todo.length, ok: ok };
+}
+var STU_FROM_SYM = { '/': 'มา', '(ส)': 'สาย', '(ข)': 'ขาด', '(ล)': 'ลา', '(ก)': 'กิจกรรม', '(ห)': 'ขาด' };
+function stuParseHdrDate_(t) {
+  var m = /^(\d{1,2})\s*([ก-๙.]+?)\s*(\d{4})\s*\(\s*\d+\s*\)$/.exec(String(t).replace(/\s+/g, ' ').trim());
+  if (!m) return '';
+  var mi = TH_MON.indexOf(m[2].replace(/\s/g, ''));
+  if (mi < 0) return '';
+  var y = +m[3] - 543, pad = function (x) { return (x < 10 ? '0' : '') + x; };
+  return y + '-' + pad(mi + 1) + '-' + pad(+m[1]);
+}
+function stuOverlap_(list, n) {
+  return list.some(function (x) {
+    if (x.date !== n.date) return false;
+    var a1 = +x.period || 0, a2 = a1 + (+x.span === 2 ? 1 : 0), b1 = n.period, b2 = b1 + (n.span === 2 ? 1 : 0);
+    return !a1 || (a1 <= b2 && b1 <= a2);
+  });
+}
+// อ่านรายงานทุกห้องของกลุ่มนี้ใน STUMIS → รายการคาบ { date, period, span, st: { studentId: [s1, s2] } }
+function stuImportPlan_(S, g) {
+  var sb = find_('Subjects', 'subjectId', g.subjectId) || {}, rooms = roomsOf_(g);
+  var mine = stus_().filter(function (s) { return rooms.indexOf(s.room) >= 0; });
+  var cells = S.cells.filter(function (c) { return c.rooms.some(function (r) { return rooms.indexOf(r) >= 0; }); });
+  var byCode = cells.filter(function (c) { return sb.code && c.text.indexOf(String(sb.code).trim()) >= 0; });
+  if (byCode.length) cells = byCode;
+  var classes = {}, view = null, out = { classes: [], sessions: [], unmatched: {}, foreign: 0, truant: 0 }, slots = {}, seen = {};
+  cells.forEach(function (c) { var k = c.f.idcode + '|' + c.f.room; (classes[k] = classes[k] || { cells: [], text: c.text }).cells.push(c); });
+  Object.keys(classes).forEach(function (k) {
+    var C = classes[k], f0 = C.cells[0].f;
+    view = view || forms_(S.req('vicha_view1.php'));
+    var rf = view.filter(function (x) { return /vicha_report-process\.php/.test(x.action) && fval_(x, 'idcode') === f0.idcode && fval_(x, 'room') === f0.room; })[0];
+    if (!rf) { out.classes.push({ label: C.text, err: 'หาหน้ารายงานไม่พบ' }); return; }
+    var html = S.req('vicha_report-process.php', fdata_(rf)), hdr = null, cols = [], rows = [];
+    String(html).replace(/<script[\s\S]*?<\/script>/gi, '').split(/<tr\b/i).slice(1).forEach(function (tr) {
+      var cells2 = [], m, re = /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
+      tr = tr.split(/<\/tr>/i)[0];
+      while ((m = re.exec(tr))) {
+        var hm = /href\s*=\s*(?:["']([^"']*vicha_ck-edit[^"']*)["']|([^\s"'>]*vicha_ck-edit[^\s"'>]*))/i.exec(m[1]);
+        cells2.push({ text: htmlText_(m[1]), href: hm ? htmlDec_(hm[1] || hm[2]) : '' });
+      }
+      if (!hdr && cells2.some(function (x) { return x.text === 'รหัสนักเรียน'; })) {
+        hdr = cells2; cells2.forEach(function (x, i) { var d = stuParseHdrDate_(x.text); if (d) cols.push({ i: i, date: d }); }); return;
+      }
+      if (hdr && cells2.length > 3 && /^\d{3,8}$/.test(cells2[1].text)) rows.push({ id: cells2[1].text, name: cells2[2].text, cells: cells2 });
+    });
+    // คอลัมน์ → คาบ: เทียบกับตารางสอนวันนั้น ถ้าจำนวนไม่ตรงค่อยเปิดหน้าแก้ไขดูเลขคาบ
+    var byDate = {};
+    cols.forEach(function (c) { (byDate[c.date] = byDate[c.date] || []).push(c); });
+    Object.keys(byDate).forEach(function (d) {
+      var cabs = C.cells.filter(function (c) { return c.wan === stuDay_(d); }).map(function (c) { return c.cab; }).sort(function (a, b) { return a - b; });
+      byDate[d].forEach(function (c, j) {
+        if (cabs.length === byDate[d].length) { c.cab = cabs[j]; return; }
+        var r0 = rows.filter(function (r) { return r.cells[c.i] && r.cells[c.i].href; })[0], ef = r0 && stuEditForm_(S.req(r0.cells[c.i].href));
+        c.cab = ef ? +fval_(ef, 'cab') : 0;
+      });
+    });
+    var want = stuWant_(mine.map(function (s) { return { id: s.studentId, name: s.name, st: s.studentId }; })), matched = 0;
+    rows.forEach(function (r) {
+      var sid = stuPick_(want, r.id, r.name);
+      if (!sid) { out.foreign++; return; }
+      matched++; seen[sid] = 1;
+      cols.forEach(function (c) {
+        if (!c.cab) return;
+        var sym = r.cells[c.i] ? r.cells[c.i].text : '';
+        if (!sym) return;
+        if (sym === '(ห)') out.truant++;
+        var k2 = c.date + '|' + c.cab;
+        (slots[k2] = slots[k2] || { date: c.date, cab: c.cab, st: {} }).st[sid] = STU_FROM_SYM[sym] || 'ขาด';
+      });
+    });
+    out.classes.push({ label: C.text, dates: Object.keys(byDate).length, cols: cols.length, rows: rows.length, matched: matched });
+  });
+  mine.forEach(function (s) { if (!seen[s.studentId]) out.unmatched[s.studentId] = s.name; });
+  // รวมคาบติดกันวันเดียวกันเป็นคาบคู่
+  var keys = Object.keys(slots).sort(function (a, b) { var x = slots[a], y = slots[b]; return x.date < y.date ? -1 : x.date > y.date ? 1 : x.cab - y.cab; }), used = {};
+  keys.forEach(function (k, i) {
+    if (used[k]) return;
+    var a = slots[k], b = slots[a.date + '|' + (a.cab + 1)], n = { date: a.date, period: a.cab, span: 1, st: {} };
+    if (b) { n.span = 2; used[a.date + '|' + (a.cab + 1)] = 1; }
+    Object.keys(a.st).concat(b ? Object.keys(b.st) : []).forEach(function (sid) { n.st[sid] = [a.st[sid] || '', b ? (b.st[sid] || '') : '']; });
+    out.sessions.push(n);
+  });
+  return out;
+}
+function stuPlanOut_(plan, g) {
+  var ex = rows_('Sessions').filter(function (x) { return x.groupId === g.groupId; }), skip = plan.sessions.filter(function (n) { return stuOverlap_(ex, n); }).length;
+  return { classes: plan.classes, sessions: plan.sessions.length, doubles: plan.sessions.filter(function (n) { return n.span === 2; }).length,
+    periods: plan.sessions.reduce(function (a, n) { return a + n.span; }, 0), first: plan.sessions.length ? plan.sessions[0].date : '', last: plan.sessions.length ? plan.sessions[plan.sessions.length - 1].date : '',
+    skip: skip, unmatched: Object.keys(plan.unmatched).map(function (k) { return plan.unmatched[k]; }), foreign: plan.foreign, truant: plan.truant };
+}
+function stuCells_(S, se, g) {
+  var day = stuDay_(se.date), rooms = roomsOf_(g), out = [];
+  for (var k = 1; k <= (+se.span === 2 ? 2 : 1); k++) {
+    var cab = +se.period + k - 1;
+    S.cells.forEach(function (c) {
+      if (c.wan === day && c.cab === cab && c.rooms.some(function (r) { return rooms.indexOf(r) >= 0; })) out.push({ cell: c, k: k });
+    });
+  }
+  return out;
+}
+function stuPushCell_(S, se, ck, want, dry) {
+  var c = ck.cell, cellPost = c.f;
+  S.req('vicha_ck3.php', cellPost);
+  var p1 = S.req('vicha_ck-l.php', cellPost), df = forms_(p1).filter(function (x) { return /vicha_ck-l-2/.test(x.action); })[0];
+  var post = df ? fdata_(df) : JSON.parse(JSON.stringify(cellPost));
+  post.date = se.date;
+  var p2 = S.req('vicha_ck-l-2.php', post), txt = htmlText_(p2);
+  if (/ในตารางสอนคือ/.test(txt)) throw new Error('STUMIS: วันที่ ' + se.date + ' ไม่ตรงกับวันในตารางสอนของ ' + c.text);
+  var sf = forms_(p2).filter(function (x) { return /vicha_cksave/.test(x.action); })[0];
+  var res = { label: c.text, cab: c.cab, total: 0, change: [], missing: [] };
+  if (sf) {
+    res.mode = 'new';
+    var o = fdata_(sf), n = +o.trow || 0;
+    res.total = n;
+    for (var i = 1; i <= n; i++) {
+      var id = String(o['idstu' + i] || '').trim(), nm = String(o['name' + i] || '').replace(/\s+/g, ' ').trim(), w = stuPick_(want, id, nm);
+      // ไม่อยู่ในระบบเรา = คงค่าเริ่มต้นของ STUMIS (ขาด) ให้ตรงกับระบบเราที่ไม่เช็ค = ขาด
+      if (!w) { res.missing.push(nm || id); o['ck' + i] = 'ขาด'; continue; }
+      o['ck' + i] = w;
+      res.change.push({ id: id, name: nm, to: w });
+    }
+    if (!dry) { S.req(sf.action || 'vicha_cksave.php', o, 0, true); res.done = true; }
+    return res;
+  }
+  res.mode = 'edit';
+  var view = S.req('vicha_view1.php'), rf = forms_(view).filter(function (x) {
+    return /vicha_report-process\.php/.test(x.action) && fval_(x, 'idcode') === c.f.idcode && fval_(x, 'room') === c.f.room;
+  })[0];
+  if (!rf) throw new Error('STUMIS: หาหน้ารายงานของ ' + c.text + ' ไม่พบ');
+  var tb = stuReport_(S.req('vicha_report-process.php', fdata_(rf)), se.date);
+  if (!tb.cols.length) throw new Error('STUMIS: ' + c.text + ' มีบันทึกวันที่ ' + se.date + ' แล้ว แต่หาในรายงานไม่พบ');
+  // หาคอลัมน์ของคาบนี้จากหน้าแก้ไขของแถวแรก
+  var pages = {}, col = -1;
+  tb.cols.forEach(function (ci) {
+    if (col >= 0) return;
+    var r0 = tb.rows.filter(function (r) { return r.cells[ci] && r.cells[ci].href; })[0];
+    if (!r0) return;
+    var pg = S.req(r0.cells[ci].href), ef = stuEditForm_(pg);
+    pages[r0.cells[ci].href] = pg;
+    if (ef && +fval_(ef, 'cab') === c.cab) col = ci;
+  });
+  if (col < 0) throw new Error('STUMIS: หาคาบที่ ' + c.cab + ' ของวันที่ ' + se.date + ' (' + c.text + ') ไม่พบ');
+  tb.rows.forEach(function (r) {
+    var w = stuPick_(want, r.id, r.name), cell = r.cells[col];
+    res.total++;
+    if (!w) { res.missing.push(r.name); return; }
+    if (!cell || !cell.href) return;
+    if (STU_SYM[cell.sym] === w) return;
+    var pg = pages[cell.href] || S.req(cell.href), ef = stuEditForm_(pg);
+    if (!ef) throw new Error('STUMIS: เปิดหน้าแก้ไขของ ' + r.name + ' ไม่ได้');
+    var from = fval_(ef, 'ckl') || STU_SYM[cell.sym] || cell.sym;
+    if (from === w) return;
+    res.change.push({ id: r.id, name: r.name, from: from, to: w });
+    if (!dry) { var o = fdata_(ef); o.ck = w; S.req(ef.action ? S.url(ef.action, S.url(cell.href)) : cell.href, o, 0, true); }
+  });
+  if (!dry) res.done = true;
+  return res;
+}
+function stuNorm_(n) {
+  return String(n || '').replace(/\s+/g, '').replace(/^(เด็กชาย|เด็กหญิง|ด\.ช\.|ด\.ญ\.|นางสาว|น\.ส\.|นาย|นาง)/, '');
+}
+// จับคู่ด้วยเลขประจำตัวก่อน ไม่เจอค่อยใช้ชื่อ-นามสกุล (ตัดคำนำหน้า/ช่องว่าง) ถ้าชื่อซ้ำกันจะไม่ใช้ชื่อ
+function stuWant_(list) {
+  var w = { id: {}, name: {}, idOf: {}, used: {} }, dup = {};
+  list.forEach(function (x) {
+    w.id[String(x.id).trim()] = x;
+    var k = stuNorm_(x.name);
+    if (!k) return;
+    if (w.name[k]) dup[k] = 1; else w.name[k] = x;
+  });
+  Object.keys(dup).forEach(function (k) { delete w.name[k]; });
+  return w;
+}
+function stuPick_(w, id, name) {
+  var x = w.id[String(id).trim()] || w.name[stuNorm_(name)];
+  if (!x) return '';
+  w.used[x.id] = 1;
+  return x.st;
+}
+function stuEditForm_(html) { return forms_(html).filter(function (f) { return f.inputs.some(function (i) { return i.name === 'ck' && /radio/i.test(i.type || ''); }); })[0]; }
+function stuReport_(html, date) {
+  var key = stuDateKey_(date), cols = [], rows = [], hdr = null;
+  String(html).replace(/<script[\s\S]*?<\/script>/gi, '').split(/<tr\b/i).slice(1).forEach(function (tr) {
+    var cells = [], m, re = /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
+    tr = tr.split(/<\/tr>/i)[0];
+    while ((m = re.exec(tr))) {
+      var hm = /href\s*=\s*(?:["']([^"']*vicha_ck-edit[^"']*)["']|([^\s"'>]*vicha_ck-edit[^\s"'>]*))/i.exec(m[1]);
+      cells.push({ text: htmlText_(m[1]), href: hm ? htmlDec_(hm[1] || hm[2]) : '' });
+    }
+    if (!hdr && cells.some(function (x) { return x.text === 'รหัสนักเรียน'; })) {
+      hdr = cells;
+      cells.forEach(function (x, i) { if (x.text.replace(/\s/g, '').indexOf(key + '(') === 0 || x.text.replace(/\s/g, '') === key) cols.push(i); });
+      return;
+    }
+    if (hdr && cells.length > 3 && /^\d{3,8}$/.test(cells[1].text)) rows.push({ id: cells[1].text, name: cells[2].text, cells: cells.map(function (x) { return { sym: x.text, href: x.href }; }) });
+  });
+  return { cols: cols, rows: rows };
+}
+
+/* ---------- ติดตั้งครั้งแรก (รันซ้ำได้ ไม่ทับข้อมูลเดิม) ---------- */
+function setup() {
+  Object.keys(HEAD).forEach(dirty_);
+  var ss = ss_();
+  Object.keys(HEAD).forEach(function (n) {
+    var s = ss.getSheetByName(n) || ss.insertSheet(n);
+    s.getRange(1, 1, s.getMaxRows(), HEAD[n].length).setNumberFormat('@');
+    s.getRange(1, 1, 1, HEAD[n].length).setValues([HEAD[n]]).setFontWeight('bold');
+    s.setFrozenRows(1);
+  });
+  var props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('secret')) props.setProperty('secret', Utilities.getUuid() + Utilities.getUuid());
+  var have = {};
+  rows_('Config').forEach(function (r) { have[r.key] = 1; });
+  if (have.teacherPass) {
+    addMany_('Config', DEFAULTS_().filter(function (r) { return !have[r.key] && r.key !== 'teacherPass'; }));
+  } else {
+    addMany_('Config', [
+      { key: 'teacherPass', value: Utilities.getUuid().replace(/-/g, '').slice(0, 8), note: 'รหัสผ่านครู (แก้ได้ อย่างน้อย 6 ตัว)' },
+    ].concat(DEFAULTS_().slice(1)));
+  }
+  if (!rows_('Subjects').length) {
+    var W = { wPre: 25, wMid: 20, wPost: 25, wFinal: 30 };
+    var subs = [
+      { subjectId: 'S1', code: 'รหัสวิชา ม.6', name: 'เคมี ม.6' },
+      { subjectId: 'S2', code: 'รหัสวิชา ม.4/3', name: 'วิชา ม.4/3' },
+      { subjectId: 'S3', code: 'รหัสวิชา ม.4/4-5', name: 'วิชา ม.4/4-5' },
+      { subjectId: 'S4', code: 'รหัสวิชา ม.1', name: 'วิชา ม.1' }
+    ];
+    subs.forEach(function (s) { Object.keys(W).forEach(function (k) { s[k] = W[k]; }); });
+    addMany_('Subjects', subs);
+    addMany_('Groups', [
+      { groupId: 'G61', subjectId: 'S1', label: 'ม.6/1', rooms: '6/1' },
+      { groupId: 'G62', subjectId: 'S1', label: 'ม.6/2', rooms: '6/2' },
+      { groupId: 'G63', subjectId: 'S1', label: 'ม.6/3', rooms: '6/3' },
+      { groupId: 'G43', subjectId: 'S2', label: 'ม.4/3', rooms: '4/3' },
+      { groupId: 'G445', subjectId: 'S3', label: 'ม.4/4-5', rooms: '4/4,4/5' },
+      { groupId: 'G11', subjectId: 'S4', label: 'ม.1/1', rooms: '1/1' }
+    ]);
+    var items = [];
+    subs.forEach(function (s, i) {
+      items.push({ itemId: 'IM' + (i + 1), subjectId: s.subjectId, cat: 'mid', label: 'สอบกลางภาค', max: 20, ord: 1 });
+      items.push({ itemId: 'IF' + (i + 1), subjectId: s.subjectId, cat: 'final', label: 'สอบปลายภาค', max: 30, ord: 1 });
+    });
+    addMany_('Items', items);
+  }
+  try { folder_(); } catch (e) { Logger.log('สร้างโฟลเดอร์ Drive ไม่ได้: ' + e); }
+  try {
+    var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'autoClose'; });
+    if (!has) ScriptApp.newTrigger('autoClose').timeBased().everyMinutes(10).create();
+  } catch (e) { Logger.log('ตั้ง trigger ไม่ได้: ' + e); }
+  Object.keys(HEAD).forEach(dirty_);
+  props.setProperty('gen', String(Date.now()));
+  Logger.log('ติดตั้งเสร็จ — รหัสผ่านครูอยู่ในชีต Config');
+}
+
+  const keyOf = n => { const ix = KEYS[n].map(k => HEAD[n].indexOf(k)); return r => ix.map(i => r[i] == null ? '' : String(r[i])).join('|'); };
+  const clean = r => r.map(x => x == null ? '' : String(x));
+  return {
+    ver: APP_VER, HEAD: HEAD, KEYS: KEYS, SYNC: SYNC,
+    reset() { Object.keys(HEAD).forEach(n => { sheet(n).data = [HEAD[n].slice()]; }); },
+    put(n, rows) { sheet(n).data = [HEAD[n].slice()].concat(rows.map(clean)); },
+    merge(n, rows) {
+      const s = sheet(n), k = keyOf(n), at = new Map(); let ch = 0;
+      if (!s.data.length) s.data.push(HEAD[n].slice());
+      s.data.forEach((r, i) => { if (i && r) at.set(k(r), i); });
+      rows.forEach(r0 => { const r = clean(r0), key = k(r), i = at.get(key);
+        if (i != null) { if (s.data[i].join('\u0001') !== r.join('\u0001')) { s.data[i] = r; ch++; } }
+        else { at.set(key, s.data.length); s.data.push(r); ch++; } });
+      return ch;
+    },
+    del(n, key) { const s = sheets[n]; if (!s || !KEYS[n]) return 0; const k = keyOf(n), before = s.data.length; s.data = s.data.filter((r, i) => !i || !r || k(r) !== key); return before - s.data.length; },
+    dump() { const o = {}; SYNC.forEach(n => { o[n] = sheets[n] ? sheets[n].data.slice(1).filter(r => r && r.join('') !== '') : []; }); return o; },
+    run(a, p, seed) {
+      if (!API[a]) throw new Error('ไม่รู้จักคำสั่ง ' + a);
+      MEMO_ = {}; ID_SEED = seed || null; ID_N = 0;
+      try { const r = API[a](p || {}); return r === undefined ? null : JSON.parse(JSON.stringify(r, (k, v) => k === '_r' ? undefined : v)); }
+      finally { MEMO_ = null; ID_SEED = null; }
+    }
+  };
+})();
+
+</script>
 <script>
 /* ====== ตั้งค่า: วาง URL ของ Apps Script Web app (ลงท้าย /exec) ตรงนี้ ====== */
 const API_URL = 'https://script.google.com/macros/s/AKfycbyJWscvDfAl1IUnkgrwo225EqopTIXb0z7K3SHP2_AO06rUlwnc6LMDkF92a0nYVTvi/exec';
@@ -177,12 +2015,131 @@ async function api(a, p, quiet){
     return j.data;
   } finally { if (!quiet) busy(-1); }
 }
-const tapi = (a, p, quiet) => api(a, Object.assign({ t: LS.get('tt') }, p || {}), quiet);
+/* ===== เครื่องครู: ข้อมูลอยู่ในเครื่อง → อ่านทันที · เขียนในเครื่องก่อนแล้วส่งตามคิว · ดึงเฉพาะที่เปลี่ยน ===== */
+const LOCAL_R = new Set(['tBoot', 'tDash', 'tLive', 'tAttGrid', 'tScoreGrid', 'tStudent', 'tTraitGrid', 'tQuizList', 'tQuizResults']);
+const LOCAL_W = new Set(['tOpen', 'tSetAtt', 'tFill', 'tAttRestore', 'tClose', 'tReopen', 'tSesUpdate', 'tSesDel', 'tItemSave', 'tItemHide', 'tItemDel', 'tSetScores',
+  'tTTSave', 'tSubjectSave', 'tSubjectAdd', 'tGroupAdd', 'tStuSave', 'tItemOrder', 'tTraitSet', 'tQuizSave', 'tQuizDel', 'tQuizGrade', 'tQuizRegrade', 'tQuizReset', 'tStuReset']);
+const LIVE_SHEETS = ['Sessions', 'Attendance', 'ExitTickets', 'QuizAns', 'Scores', 'Students'];
+const RL = { on: typeof LOCAL_GAS !== 'undefined', ready: false, started: false, since: {}, gen: '', full: 0, out: [], busy: false, sync: null, lastSync: 0, net: false, refresh: false, off: '' };
+const IDB = (() => { let pr = null;
+  const open = () => pr || (pr = new Promise((res, rej) => { try { const r = indexedDB.open('gradebook', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch(e){ rej(e); } }));
+  const tx = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction('kv', mode), q = fn(t.objectStore('kv')); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); };
+  return { get: k => tx('readonly', st => st.get(k)).catch(() => null), set: (k, v) => tx('readwrite', st => st.put(v, k)).catch(() => null), del: k => tx('readwrite', st => st.delete(k)).catch(() => null) }; })();
+const seed10 = () => { let x = ''; while (x.length < 10) x += Math.random().toString(36).slice(2).replace(/[^a-z0-9]/g, ''); return x.slice(0, 10); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function apiRaw(a, p, s){ const r = await fetch(API_URL, { method:'POST', body: JSON.stringify(s ? { a:a, p:p, s:s } : { a:a, p:p }) }); return r.json(); }
+let rlSaveT;
+function rlSave(){ clearTimeout(rlSaveT); rlSaveT = setTimeout(() => IDB.set('replica', { ver: LOCAL_GAS.ver, gen: RL.gen, since: RL.since, full: RL.full, data: LOCAL_GAS.dump() }), 800); }
+function rlSaveOut(){ LS.set('outbox', RL.out.length ? JSON.stringify(RL.out) : null); }
+function rlBadge(){ const b = document.getElementById('rlb'); if (!b) return; const n = RL.out.length;
+  b.textContent = RL.net ? (n ? 'ออฟไลน์ · รอส่ง ' + n + ' รายการ' : 'ออฟไลน์') : n ? 'กำลังส่ง ' + n + ' รายการ' : '';
+  b.className = RL.net ? 'net' : ''; b.style.display = b.textContent && MODE === 'T' ? 'block' : 'none'; }
+function rlOff(why){ RL.ready = false; RL.off = why; if (why === 'ver') toast('Code.gs กับ index.html คนละเวอร์ชัน — ระบบทำงานแบบช้าไปก่อน อัปเดตไฟล์ให้ครบ'); }
+async function rlFull(){
+  const j = await apiRaw('tSnapshot', { t: LS.get('tt') });
+  if (!j.ok) throw new Error(j.error);
+  const d = j.data;
+  if (d.ver !== LOCAL_GAS.ver) { rlOff('ver'); return false; }
+  LOCAL_GAS.reset(); Object.keys(d.data).forEach(n => LOCAL_GAS.put(n, d.data[n]));
+  RL.since = {}; LOCAL_GAS.SYNC.forEach(n => RL.since[n] = d.now - 120000);
+  RL.gen = d.gen; RL.full = Date.now(); RL.lastSync = Date.now(); RL.ready = true; rlSave(); return true;
+}
+async function rlStart(){
+  if (!RL.on || RL.started || RL.off) return; RL.started = true;
+  try { RL.out = JSON.parse(LS.get('outbox') || '[]'); } catch(e){ RL.out = []; }
+  const c = await IDB.get('replica');
+  try {
+    if (c && c.ver === LOCAL_GAS.ver && c.data) { LOCAL_GAS.reset(); Object.keys(c.data).forEach(n => LOCAL_GAS.put(n, c.data[n])); Object.assign(RL, { since: c.since || {}, gen: c.gen, full: c.full || 0, ready: true }); }
+    else await rlFull();
+  } catch(e){ RL.started = false; return; }
+  if (RL.out.length) rlPump(); else rlSync(null, true);
+  setInterval(() => { if (!document.hidden) rlSync(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) rlSync(null, true); });
+}
+async function rlPump(){
+  if (RL.busy || !RL.out.length) return; RL.busy = true; rlBadge();
+  let bad = false;
+  try {
+    while (RL.out.length) {
+      if (!LS.get('tt')) return;
+      const op = RL.out[0]; let j;
+      try { j = await apiRaw(op.a, Object.assign({ t: LS.get('tt') }, op.p), op.s); }
+      catch(e){ RL.net = true; rlBadge(); await sleep(Math.min(30000, 1500 * (op.n = (op.n || 0) + 1))); continue; }
+      if (RL.net) { RL.net = false; rlBadge(); }
+      if (!j.ok && /AUTH/.test(j.error)) { LS.set('tt', null); T.boot = null; draw(); toast('กรุณาเข้าสู่ระบบอีกครั้ง รายการที่ยังไม่ส่งจะส่งต่อให้'); return; }
+      RL.out.shift(); rlSaveOut(); rlBadge();
+      if (!j.ok) { bad = true; toast('บันทึกไม่สำเร็จ: ' + j.error + ' — ดึงข้อมูลจริงมาแทนแล้ว'); }
+    }
+  } finally { RL.busy = false; rlBadge(); }
+  if (bad) { try { await rlFull(); } catch(e){} await rlRefresh(); } else await rlSync(null, true);
+}
+async function rlDrain(){ for (let i = 0; i < 600 && (RL.out.length || RL.busy); i++) { if (!RL.busy) rlPump(); await sleep(50); } }
+async function rlSync(only, force, quietRefresh){
+  if (!RL.ready || RL.out.length || RL.busy) return false;
+  if (RL.sync) return RL.sync;
+  const list = only || LOCAL_GAS.SYNC;
+  if (!force && Date.now() - RL.lastSync < (window.RL_GAP != null ? window.RL_GAP : 3000)) return false;
+  RL.sync = (async () => {
+    try {
+      const since = Math.min.apply(null, list.map(n => RL.since[n] || 0));
+      const j = await apiRaw('tSync', { t: LS.get('tt'), since, only: only || undefined });
+      if (RL.net) { RL.net = false; rlBadge(); }
+      if (!j.ok) return false;
+      const d = j.data;
+      if (d.ver !== LOCAL_GAS.ver) { rlOff('ver'); return false; }
+      if (d.gen !== RL.gen || Date.now() - RL.full > 12 * 3600e3) { await rlFull(); return true; }
+      if (RL.out.length || RL.busy) return false;
+      let ch = 0;
+      Object.keys(d.data).forEach(n => { ch += LOCAL_GAS.merge(n, d.data[n]); });
+      (d.del || []).forEach(x => { ch += LOCAL_GAS.del(x[0], x[1]); });
+      list.forEach(n => RL.since[n] = d.now - 120000);
+      if (!only) RL.lastSync = Date.now();
+      if (ch) rlSave();
+      return ch > 0;
+    } catch(e){ RL.net = true; rlBadge(); return false; }
+  })();
+  let ch = false;
+  try { ch = await RL.sync; } finally { RL.sync = null; }
+  if (ch && !quietRefresh) await rlRefresh();
+  return ch;
+}
+// วาดหน้าปัจจุบันใหม่จากข้อมูลในเครื่อง (ไม่วาดทับตอนกำลังพิมพ์/เปิดหน้าต่าง)
+async function rlRefresh(){
+  if (!RL.ready || MODE !== 'T' || !T.boot) return;
+  const ae = document.activeElement;
+  if (modalOpen() || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) || (T.tdraft && Object.keys(T.tdraft).length)) { RL.refresh = true; return; }
+  RL.refresh = false;
+  try {
+    T.boot = LOCAL_GAS.run('tBoot', {});
+    if (T.tab === 'today' && T.dash) T.dash = LOCAL_GAS.run('tDash', {});
+    if (T.tab === 'att' && T.att && grp(T.gid)) T.att = LOCAL_GAS.run('tAttGrid', { groupId: T.gid });
+    if (T.tab === 'live' && T.live) T.live = LOCAL_GAS.run('tLive', { sessionId: T.live.session.sessionId });
+    if ((T.tab === 'score' || T.tab === 'item') && T.sg && grp(T.gid)) { const g = T.gid, tg = T.tg; await scLoad(); if (tg && tg.gid === g && !Object.keys(T.tdraft || {}).length) await trLoad(); }
+    if (T.tab === 'stu' && T.stu) T.stu = LOCAL_GAS.run('tStudent', { studentId: T.stu.me.studentId });
+  } catch(e){ if (T.tab === 'live' || T.tab === 'stu') { T.tab = 'today'; T.dash = LOCAL_GAS.run('tDash', {}); } }
+  draw();
+}
+window.__rlIdle = async () => { for (let i = 0; i < 800; i++) { if (!RL.out.length && !RL.busy && !RL.sync) return; await sleep(20); } };
+async function tapi(a, p, quiet){
+  const q = Object.assign({}, p || {});
+  if (RL.ready && LOCAL_R.has(a)) return LOCAL_GAS.run(a, q);
+  if (RL.ready && LOCAL_W.has(a)) {
+    const s = seed10(), r = LOCAL_GAS.run(a, q, s);
+    RL.out.push({ a:a, p:q, s:s }); rlSaveOut(); rlSave(); rlBadge();
+    if (!quiet && !q.dry) savedFlash();
+    rlPump(); return r;
+  }
+  if (RL.ready) await rlDrain();
+  const r = await api(a, Object.assign({ t: LS.get('tt') }, q), quiet);
+  if (RL.ready && !READS.has(a) && !q.dry) await rlSync(null, true);
+  return r;
+}
 let toastT;
 function toast(m){ const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', 2600); }
 function modal(html){ const m = $('#modal'); m.innerHTML = '<div class="box">' + html + '</div>'; m.classList.add('on'); setTimeout(loadImgs, 0); }
 let askRes = null, askOpt = {};
-function mclose(){ const m = $('#modal'); m.classList.remove('on'); m.innerHTML = ''; if (askRes) { const r = askRes; askRes = null; r(false); } }
+function mclose(){ const m = $('#modal'); m.classList.remove('on'); m.innerHTML = ''; if (askRes) { const r = askRes; askRes = null; r(false); } if (RL.refresh) setTimeout(rlRefresh, 0); }
+document.addEventListener('focusout', () => { if (RL.refresh) setTimeout(() => { if (RL.refresh) rlRefresh(); }, 300); });
 function ask(msg, opt){
   mclose(); askOpt = opt || {};
   return new Promise(res => { askRes = res;
@@ -278,7 +2235,7 @@ function copyText(txt, msg){
 }
 function setTheme(t){ document.documentElement.dataset.theme = t; LS.set('theme', t); drawHeader(); }
 const modalOpen = () => $('#modal').classList.contains('on');
-async function run(fn){ try { await fn(); } catch(e){ if (/AUTH/.test(e.message)) { LS.set('tt', null); LS.set('tcache', null); T.boot = null; draw(); } toast(e.message.replace(/^AUTH: /, '')); } }
+async function run(fn){ try { await fn(); } catch(e){ if (/AUTH/.test(e.message)) { LS.set('tt', null); T.boot = null; draw(); } toast(e.message.replace(/^AUTH: /, '')); } }
 function calcNet(sub, items, get){
   const w = { pre:+sub.wPre||0, mid:+sub.wMid||0, post:+sub.wPost||0, final:+sub.wFinal||0 }, eq = sub.wMode === 'eq', out = { cats:{}, total:0, eq };
   CATS.forEach(c => {
@@ -489,16 +2446,15 @@ const grpSel = (id, cur) => `<select id="${id}" data-chg="${id}">${T.boot.groups
 // เปิดแอป: แสดงข้อมูลชุดล่าสุดที่จำไว้ในเครื่องทันที แล้วค่อยอัปเดตจากเซิร์ฟเวอร์ (ไม่ต้องรอหน้าโหลด)
 async function tLoad(){
   const want = T.tab === 'today';
-  if (!T.boot) { try { const c = JSON.parse(LS.get('tcache') || 'null'); if (c && c.boot) { T.boot = c.boot; if (want && c.dash) T.dash = c.dash; T.stale = true; if (!grp(T.gid)) T.gid = T.boot.groups[0] ? T.boot.groups[0].groupId : ''; draw(); } } catch(e){} }
-  await run(async () => { const r = await Promise.all([tapi('tBoot'), want ? tapi('tDash') : null]); T.boot = r[0]; if (want) T.dash = r[1]; if (!grp(T.gid)) T.gid = T.boot.groups[0] ? T.boot.groups[0].groupId : '';
-    try { LS.set('tcache', JSON.stringify({ boot: T.boot, dash: T.dash || null })); } catch(e){} });
-  T.stale = false; draw(); }
+  if (RL.on && !RL.started && !RL.off) { T.stale = !T.boot; draw(); await rlStart(); T.stale = false; }
+  await run(async () => { const r = await Promise.all([tapi('tBoot'), want ? tapi('tDash') : null]); T.boot = r[0]; if (want) T.dash = r[1]; if (!grp(T.gid)) T.gid = T.boot.groups[0] ? T.boot.groups[0].groupId : ''; });
+  draw(); if (RL.ready) rlSync(); }
 function vTeacher(){
   if (!LS.get('tt')) return `<h1>เข้าสู่ระบบครู</h1><div class="card"><label>รหัสผ่าน (ดูในชีต Config)</label><input class="full" id="tpass" type="password"><p><button class="btn pri" data-act="tLogin">เข้าสู่ระบบ</button></p></div>`;
-  if (!T.boot) return '<div class="card center">กำลังโหลด… <button class="btn sm" data-act="tReload">โหลดใหม่</button></div>';
+  if (!T.boot) return `<div class="card center">${T.stale ? 'กำลังโหลดข้อมูลครั้งแรก (ครั้งต่อไปจะเปิดได้ทันที)…' : 'กำลังโหลด…'} <button class="btn sm" data-act="tReload">โหลดใหม่</button></div>`;
   const tabs = [['today','วันนี้'],['att','เช็คชื่อ'],['score','คะแนน'],['tt','ตารางสอน'],['more','เพิ่มเติม']];
   const cur = T.tab === 'live' ? 'today' : T.tab === 'item' ? 'score' : T.tab === 'stu' ? (T.stuFrom || 'score') : T.tab;
-  const body = (T.stale ? '<p class="mut" style="margin:0 0 6px">กำลังอัปเดตข้อมูลล่าสุด…</p>' : '') + { today:vToday, live:vLive, att:vAtt, score:vScore, item:vItem, tt:vTT, more:vMore, stu:vStu }[T.tab]();
+  const body = { today:vToday, live:vLive, att:vAtt, score:vScore, item:vItem, tt:vTT, more:vMore, stu:vStu }[T.tab]();
   return '<div class="shell"><nav class="menu" aria-label="เมนูหลัก">' + tabs.map(t => `<button class="${cur === t[0] ? 'on' : ''}" data-act="tab" data-t="${t[0]}" ${cur === t[0] ? 'aria-current="page"' : ''}>${ICO[t[0]]}<span>${t[1]}</span></button>`).join('') + '</nav><div class="main">' + body + '</div></div>';
 }
 
@@ -610,12 +2566,20 @@ function liveBody(){
 }
 function poll(){
   clearInterval(T.timer);
-  T.timer = setInterval(async () => {
+  T.timer = setInterval(liveTick, 5000);
+}
+async function liveTick(){
     if (T.tab !== 'live' || !T.live || T.live.session.state !== 'open' || modalOpen() || document.hidden || T.pend) return;
     try {
+      let roster = false;
+      if (RL.ready && await rlSync(LIVE_SHEETS, true, true)) {
+        // มีนักเรียนลงทะเบียนใหม่ระหว่างคาบ → อัปเดตรายชื่อ
+        const b = await tapi('tBoot'), sig = x => x.students.map(z => z.studentId + z.room + z.no).join();
+        if (sig(b) !== sig(T.boot)) { T.boot = b; roster = true; }
+      }
       const d = await tapi('tLive', { sessionId: T.live.session.sessionId }, true);
       if (T.tab !== 'live' || T.pend) return;
-      const changed = d.session.state !== T.live.session.state || d.session.exitOpen !== T.live.session.exitOpen || d.session.quizOpen !== T.live.session.quizOpen;
+      const changed = roster || d.session.state !== T.live.session.state || d.session.exitOpen !== T.live.session.exitOpen || d.session.quizOpen !== T.live.session.quizOpen;
       T.live = d;
       if (changed) return draw();
       const lb = $('#liveBody'), er = $('#exRes'), qn = $('#qzN'), ql = $('#qzLeave'); if (lb) lb.innerHTML = liveBody(); if (er) er.innerHTML = exRes(); if (qn) qn.textContent = (d.quizDone || []).length; if (ql) ql.innerHTML = leaveBox();
@@ -623,9 +2587,8 @@ function poll(){
       if (newer && T.leaveSeen) { const st = T.boot.students.find(z => z.studentId === newer.studentId); toast('⚠ ' + (st ? st.name : newer.studentId) + ' ออกจากหน้าควิซ (' + newer.n + ' ครั้ง)'); }
       T.leaveSeen = now;
     } catch(e){}
-  }, 5000);
 }
-async function openLive(id){ [T.live, T.quizzes] = await Promise.all([tapi('tLive', { sessionId: id }), tapi('tQuizList')]); T.leaveSeen = {}; (T.live.quizLeaves || []).forEach(x => T.leaveSeen[x.studentId] = x.n); T.tab = 'live'; T.showP2 = false; draw(); poll(); }
+async function openLive(id){ [T.live, T.quizzes] = await Promise.all([tapi('tLive', { sessionId: id }), tapi('tQuizList')]); T.leaveSeen = {}; (T.live.quizLeaves || []).forEach(x => T.leaveSeen[x.studentId] = x.n); T.tab = 'live'; T.showP2 = false; draw(); poll(); if (RL.ready) liveTick(); }
 
 /* ----- ตารางเช็คชื่อย้อนหลัง ----- */
 function attSum(sessions, am){
@@ -1295,7 +3258,8 @@ function vMore(){
     <div class="card row"><span><b>เชื่อมกับ STUMIS</b><br><small class="mut">ส่งเช็คชื่อ (รวมที่แก้ย้อนหลัง) เข้าระบบโรงเรียนให้เอง รหัสผ่านเก็บใน Apps Script ไม่แสดงในหน้าเว็บ</small></span><button class="btn sm" data-act="stuSetup">ตั้งค่าบัญชี</button></div>
     <div class="card"><label style="color:inherit"><input type="checkbox" id="c_stuAuto" data-act="stuAutoSet" ${c.stuAuto === '1' ? 'checked' : ''}> <b>ส่งเข้า STUMIS อัตโนมัติ</b></label><br><small class="mut">ทุกชั่วโมง ระบบจะส่งคาบที่ปิดแล้วและยังไม่ส่ง รวมถึงคาบที่แก้ย้อนหลัง (แก้เฉพาะคนที่ต่าง) · ถ้าส่งไม่ได้จะขึ้น <b style="color:var(--abs)">!</b> ที่หัวคาบ แล้วรอจนกว่าจะแก้คาบนั้น</small></div>
     <div class="card"><label>เปลี่ยนรหัสผ่านครู (อย่างน้อย 6 ตัว)</label><div class="wrap"><input id="c_pass" type="password"><button class="btn" data-act="passSave">เปลี่ยน</button></div></div>
-    <div class="card"><b>ลิงก์สำหรับเขียนลงแท็ก NFC (หน้านักเรียน)</b><p style="word-break:break-all">${esc(base)}</p><b>ลิงก์หน้าครู</b><p style="word-break:break-all">${esc(base)}#teacher</p><button class="btn sm" data-act="tLogout">ออกจากระบบครู</button></div>`; }
+    <div class="card"><b>ลิงก์สำหรับเขียนลงแท็ก NFC (หน้านักเรียน)</b><p style="word-break:break-all">${esc(base)}</p><b>ลิงก์หน้าครู</b><p style="word-break:break-all">${esc(base)}#teacher</p><button class="btn sm" data-act="tLogout">ออกจากระบบครู</button></div>
+    <div class="card row"><span><b>ข้อมูลในเครื่องนี้</b><br><small class="mut">แอปเก็บสำเนาข้อมูลไว้ในเครื่องเพื่อให้เปิดและบันทึกได้ทันที ระบบดึงส่วนที่เปลี่ยนให้เอง ถ้าแก้ในชีตด้วยมือแล้วไม่เห็น กดปุ่มนี้</small></span><button class="btn sm" data-act="rlFullBtn">โหลดใหม่ทั้งหมด</button></div>`; }
   if (T.more === 'quiz') return vQuizList(back);
   if (T.more === 'qedit') return vQuizEdit();
   if (T.more === 'qres') return vQuizRes();
@@ -1308,9 +3272,11 @@ function vMore(){
 
 const TA = {
   tLogin: () => run(async () => { const d = await api('tLogin', { pass: $('#tpass').value }); LS.set('tt', d.t); await tLoad(); }),
-  tLogout: () => { LS.set('tt', null); LS.set('tcache', null); T.boot = null; draw(); },
+  tLogout: () => run(async () => { if (RL.out.length && !(await ask('ยังมี ' + RL.out.length + ' รายการที่ยังไม่ได้ส่งขึ้นเซิร์ฟเวอร์ ออกจากระบบแล้วจะหายไป ยืนยัน?', { danger: true }))) return;
+    LS.set('tt', null); RL.out = []; rlSaveOut(); await IDB.del('replica'); RL.ready = false; RL.started = false; T.boot = null; draw(); }),
+  rlFullBtn: () => run(async () => { await rlDrain(); await rlFull(); await rlRefresh(); toast('โหลดข้อมูลใหม่ทั้งหมดแล้ว'); }),
   tReload: () => tLoad(),
-  tab: d => run(async () => { clearInterval(T.timer); T.tab = d.t; if (d.t === 'today') return tLoad(); if (d.t === 'att') { T.att = null; draw(); return grp(T.gid) ? attLoad() : null; } if (d.t === 'score') { T.sg = null; draw(); return grp(T.gid) ? scLoad() : null; } if (d.t === 'more') T.more = 'menu'; draw(); }),
+  tab: d => run(async () => { clearInterval(T.timer); T.tab = d.t; if (RL.ready) setTimeout(() => rlSync(), 0); if (d.t === 'today') return tLoad(); if (d.t === 'att') { T.att = null; draw(); return grp(T.gid) ? attLoad() : null; } if (d.t === 'score') { T.sg = null; draw(); return grp(T.gid) ? scLoad() : null; } if (d.t === 'more') T.more = 'menu'; draw(); }),
   more: d => run(async () => { T.more = d.m; if (d.m === 'log') T.log = await tapi('tLog'); if (d.m === 'quiz') T.quizzes = await tapi('tQuizList'); if (d.m === 'stu') { T.boot = await tapi('tBoot'); if (!T.room && grp(T.gid)) T.room = roomsOf(grp(T.gid))[0]; } draw(); }),
   room: d => { T.room = d.r; draw(); },
   open: d => run(async () => { const se = await tapi('tOpen', { groupId: d.g, period: d.p, span: d.s }); T.boot.open.push(se); T.gid = d.g; await openLive(se.sessionId); }),
@@ -1607,7 +3573,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('#theme')) return setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   const el = e.target.closest('[data-act]'); if (!el) return;
   const f = TA[el.dataset.act] || SA[el.dataset.act]; if (!f) return;
-  const key = [el.dataset.act, el.dataset.id || '', el.dataset.stu || '', el.dataset.k || '', el.dataset.st || ''].join('|');
+  const key = [el.dataset.act, el.dataset.id || '', el.dataset.stu || '', el.dataset.k || '', el.dataset.st || '', el.dataset.t || ''].join('|');
   if (BUSY.has(key)) return;
   const r = f(el.dataset);
   if (r && typeof r.then === 'function') { BUSY.add(key); el.classList.add('busy'); el.setAttribute('aria-busy', 'true');
